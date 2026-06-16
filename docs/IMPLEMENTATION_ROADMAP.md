@@ -112,6 +112,14 @@ Dependencies: M2 for keyword-backed grid construction, M1 for shared contracts.
 Reason: properties, wells, RFT measurements, and restart grid properties need
 stable cell addressing and active/global mapping semantics.
 
+Status: complete for the scoped M3 behavior. `GridDimensions`, `CellIndex`,
+`ReservoirGrid`, `GridCell`, `GridGeometry`, and `ActiveCellMap` implement core
+indexing, activity, shape validation, and lightweight depth-derived geometry.
+`GrdeclGridBuilder` constructs a minimal grid from `SPECGRID`, `COORD`, `ZCORN`,
+and optional `ACTNUM`. Full corner-point coordinate reconstruction, volume
+calculation, local grids, dual grids, NNC, and binary GRID/EGRID readers remain
+out of scope for this milestone.
+
 Acceptance criteria:
 
 - `GridDimensions`, `CellIndex`, `ReservoirGrid`, `GridCell`, `GridGeometry`,

@@ -2,8 +2,9 @@
 
 ## Current Milestone
 
-M2: Keyword Records and GRDECL Text Parser is complete for the scoped behavior.
-The next automatic milestone is M3: Grid Domain Model and Active/Global Mapping.
+M3: Grid Domain Model and Active/Global Mapping is complete for the scoped
+behavior. The next automatic milestone is M4: Binary and Formatted Keyword
+Infrastructure.
 
 ## Completed Work
 
@@ -37,20 +38,34 @@ The next automatic milestone is M3: Grid Domain Model and Active/Global Mapping.
   float, double-exponent, string, logical, empty-string, and defaulted values.
 - GRDECL reader implemented for text files with `FileReadError` wrapping.
 - Focused M2 tests added.
+- `GridDimensions` implemented with total-cell, pillar-count, IJK/global-index
+  conversion, and bounds validation behavior.
+- `CellIndex` implemented with explicit IJK, global-index, and active-index
+  constructors plus simulator one-based conversion.
+- `ActiveCellMap` implemented with active-to-global, global-to-active,
+  active-sized expansion, global-sized compression, and shape validation.
+- `GridGeometry` implemented with GRDECL-compatible `COORD`/`ZCORN` storage,
+  array length validation, MAPAXES validation, and lightweight depth/top/bottom/
+  thickness access.
+- `ReservoirGrid` and `GridCell` implemented for resolving cells by IJK, global,
+  or active index and exposing activity and depth-derived cell values.
+- `GrdeclGridBuilder` implemented for minimal grid construction from parsed or
+  inline GRDECL text using `SPECGRID`, `COORD`, `ZCORN`, and optional `ACTNUM`.
+- Focused M3 tests added.
 
 ## Work In Progress
 
-- None for M2.
+- None for M3.
 
 ## Next Planned Task
 
-Implement M3: grid dimensions, cell indexes, reservoir grid skeleton,
-grid cells, grid geometry placeholders with real validation behavior, and
-active/global cell mapping.
+Implement M4: binary and formatted keyword infrastructure, including
+Fortran-style record markers, endian/header detection, and internal reader
+APIs for later GRID/EGRID, INIT, restart, summary, and RFT readers.
 
 ## Blockers
 
-- None for M3 foundation behavior.
+- None for M4 foundation behavior.
 
 ## Deferred Specification Items
 
@@ -72,6 +87,9 @@ active/global cell mapping.
   0.12s on the final run.
 - `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 29 passed in
   0.21s on the final M2 run.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 37 passed and
+  1 skipped in 0.23s on the final M3 run. The skipped test is the optional NumPy array
+  conversion path because NumPy is not installed in this environment.
 
 ## Known Limitations
 
@@ -82,10 +100,18 @@ active/global cell mapping.
   require independent verification before being advertised as complete support.
 - Public loaders for grid, properties, restart, summary, wells, and RFT/PLT are
   intentionally unsupported beyond discovery until their parser milestones.
-- GRDECL parsing does not perform deck semantics, grid construction, property
-  shape validation, or binary/formatted simulator keyword parsing.
+- The GRDECL parser itself does not perform deck semantics, property shape
+  validation, or binary/formatted simulator keyword parsing. Minimal grid
+  construction is handled separately by `GrdeclGridBuilder`.
 - GRDECL bare default repeats such as `3*` are represented as `None`; later
   domain validators decide whether defaults are legal for a given keyword.
+- Grid construction is limited to minimal GRDECL text-derived grids. Binary
+  GRID/EGRID readers are not implemented.
+- `GridGeometry` stores and validates `COORD` and `ZCORN`, but does not yet
+  reconstruct full corner-point XYZ coordinates, compute cell volumes, locate
+  spatial points, or support local grids, dual grids, or NNC metadata.
+- Active/global mapping supports optional NumPy arrays in code, but the NumPy
+  validation test was skipped because NumPy is not installed.
 
 ## Assumptions
 
@@ -98,3 +124,7 @@ active/global cell mapping.
 - GRDECL type inference is conservative: numeric values promote to float or
   double only when syntax requires it; otherwise mixed semantic records are
   marked `MIXED` instead of guessed.
+- M3 derives lightweight cell depth/top/bottom/thickness from eight stored
+  ZCORN values per global cell. This is a conservative internal convention for
+  the current minimal grid domain and is not a compatibility guarantee for full
+  simulator corner-point geometry ordering.
