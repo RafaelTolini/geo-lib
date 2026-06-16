@@ -150,6 +150,14 @@ Dependencies: M2 and M3.
 Reason: GRID/EGRID, INIT, restart, summary, and RFT readers require reliable
 record I/O before domain-specific parsing can be honest.
 
+Status: complete for the scoped M4 behavior. `FortranRecordReader`,
+`FortranRecord`, `Endianness`, and `detect_fortran_record_endianness` implement
+low-level Fortran-style record reading, marker mismatch detection, truncation
+errors, configurable endian order, and simple endian detection. A common
+`FormattedKeywordReader` reads GRDECL-style text keyword records and rejects
+binary-looking input. Simulator-specific unformatted keyword decoding remains
+out of scope for this milestone.
+
 Acceptance criteria:
 
 - Fortran-style record marker reader detects record-size mismatches and EOF.

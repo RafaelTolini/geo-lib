@@ -2,9 +2,8 @@
 
 ## Current Milestone
 
-M3: Grid Domain Model and Active/Global Mapping is complete for the scoped
-behavior. The next automatic milestone is M4: Binary and Formatted Keyword
-Infrastructure.
+M4: Binary and Formatted Keyword Infrastructure is complete for the scoped
+behavior. The next automatic milestone is M5: GRID/EGRID and INIT Readers.
 
 ## Completed Work
 
@@ -52,26 +51,39 @@ Infrastructure.
 - `GrdeclGridBuilder` implemented for minimal grid construction from parsed or
   inline GRDECL text using `SPECGRID`, `COORD`, `ZCORN`, and optional `ACTNUM`.
 - Focused M3 tests added.
+- `Endianness`, `FortranRecord`, `FortranRecordReader`, and
+  `detect_fortran_record_endianness` implemented under infrastructure binary
+  I/O.
+- Fortran-style record reader now validates leading/trailing marker agreement,
+  detects truncated leading markers, payloads, and trailing markers, and rejects
+  implausibly large records according to a configured maximum.
+- Simple endian detection implemented by checking the first record's matching
+  leading/trailing markers while preserving stream position.
+- `FormattedKeywordReader` implemented for common GRDECL-style formatted text
+  keyword records.
+- Formatted reader rejects binary-looking input instead of pretending to parse
+  unformatted payloads.
+- Focused M4 tests added.
 
 ## Work In Progress
 
-- None for M3.
+- None for M4.
 
 ## Next Planned Task
 
-Implement M4: binary and formatted keyword infrastructure, including
-Fortran-style record markers, endian/header detection, and internal reader
-APIs for later GRID/EGRID, INIT, restart, summary, and RFT readers.
+Implement M5: minimal GRID/EGRID and INIT/property readers using the validated
+grid domain model and keyword I/O infrastructure.
 
 ## Blockers
 
-- None for M4 foundation behavior.
+- None identified for an M5 foundation slice, but production-quality binary
+  GRID/EGRID/INIT coverage still requires independent public fixtures or
+  documentation.
 
 ## Deferred Specification Items
 
 - GRID/EGRID parsing.
 - INIT/property loading.
-- Binary record infrastructure.
 - Restart, summary, well, and RFT/PLT payload parsing.
 - NumPy, pandas, CSV, and simulator-format export.
 - Cache/index support.
@@ -90,6 +102,9 @@ APIs for later GRID/EGRID, INIT, restart, summary, and RFT readers.
 - `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 37 passed and
   1 skipped in 0.23s on the final M3 run. The skipped test is the optional NumPy array
   conversion path because NumPy is not installed in this environment.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 46 passed and
+  1 skipped in 0.25s on the final M4 run. The skipped test remains the optional
+  NumPy array conversion path because NumPy is not installed in this environment.
 
 ## Known Limitations
 
@@ -112,6 +127,12 @@ APIs for later GRID/EGRID, INIT, restart, summary, and RFT readers.
   spatial points, or support local grids, dual grids, or NNC metadata.
 - Active/global mapping supports optional NumPy arrays in code, but the NumPy
   validation test was skipped because NumPy is not installed.
+- Binary infrastructure reads Fortran-style record frames only; it does not
+  decode simulator-specific binary keyword names, types, element counts, string
+  padding, or numeric payload arrays yet.
+- `FormattedKeywordReader` supports the GRDECL-style text keyword syntax already
+  implemented by `GrdeclParser`; it does not claim every simulator formatted-file
+  variant.
 
 ## Assumptions
 
@@ -128,3 +149,6 @@ APIs for later GRID/EGRID, INIT, restart, summary, and RFT readers.
   ZCORN values per global cell. This is a conservative internal convention for
   the current minimal grid domain and is not a compatibility guarantee for full
   simulator corner-point geometry ordering.
+- M4 assumes 4-byte or 8-byte unsigned Fortran record markers. Endian detection
+  is intentionally simple and validates only the first record's matching marker
+  pair.
