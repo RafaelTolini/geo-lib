@@ -184,6 +184,15 @@ Dependencies: M3 and M4.
 Reason: grid geometry and initialization properties need both domain mapping and
 keyword file infrastructure.
 
+Status: complete for the scoped M5 behavior. `GridReader` loads minimal
+formatted GRDECL-style GRID/EGRID keyword files using `SPECGRID`, `COORD`,
+`ZCORN`, and optional `ACTNUM`. `InitReader`, `GridProperty`, and
+`PropertyCollection` load selected formatted INIT/property keywords and associate
+them with a compatible grid as active-sized or global-sized properties. Public
+`SimulationCase.load_grid()` and `load_properties()` now use these readers for
+supported formatted keyword files. Simulator-specific unformatted binary
+GRID/EGRID/INIT keyword payload decoding remains out of scope.
+
 Acceptance criteria:
 
 - Minimal GRID/EGRID reader loads dimensions and activity for validated sample

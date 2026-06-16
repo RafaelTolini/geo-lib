@@ -2,8 +2,8 @@
 
 ## Current Milestone
 
-M4: Binary and Formatted Keyword Infrastructure is complete for the scoped
-behavior. The next automatic milestone is M5: GRID/EGRID and INIT Readers.
+M5: GRID/EGRID and INIT Readers is complete for the scoped formatted-keyword
+behavior. The next automatic milestone is M6: Restart Dataset and Reports.
 
 ## Completed Work
 
@@ -64,26 +64,37 @@ behavior. The next automatic milestone is M5: GRID/EGRID and INIT Readers.
 - Formatted reader rejects binary-looking input instead of pretending to parse
   unformatted payloads.
 - Focused M4 tests added.
+- `GridProperty`, `PropertyLayout`, and `PropertyCollection` implemented for
+  typed grid-associated property values.
+- `GridReader` implemented for minimal formatted GRDECL-style GRID/EGRID keyword
+  files containing `SPECGRID`, `COORD`, `ZCORN`, and optional `ACTNUM`.
+- `InitReader` implemented for selected formatted INIT/property keyword loading.
+- `GridPropertyService` implemented to coordinate grid and property loading from
+  a `CaseManifest`.
+- `SimulationCase.load_grid()` now loads supported formatted GRID/EGRID files.
+- `SimulationCase.load_properties()` now loads supported formatted INIT files
+  and associates properties with the case grid when a supported grid file exists.
+- Focused M5 tests added.
 
 ## Work In Progress
 
-- None for M4.
+- None for M5.
 
 ## Next Planned Task
 
-Implement M5: minimal GRID/EGRID and INIT/property readers using the validated
-grid domain model and keyword I/O infrastructure.
+Implement M6: restart dataset and report foundations, including unified and
+non-unified restart indexing where supported by the available keyword
+infrastructure.
 
 ## Blockers
 
-- None identified for an M5 foundation slice, but production-quality binary
-  GRID/EGRID/INIT coverage still requires independent public fixtures or
-  documentation.
+- Production-quality binary restart report support requires independently
+  validated binary keyword payload decoding beyond the current record-framing
+  infrastructure.
 
 ## Deferred Specification Items
 
-- GRID/EGRID parsing.
-- INIT/property loading.
+- Binary/unformatted GRID/EGRID and INIT keyword payload decoding.
 - Restart, summary, well, and RFT/PLT payload parsing.
 - NumPy, pandas, CSV, and simulator-format export.
 - Cache/index support.
@@ -104,6 +115,9 @@ grid domain model and keyword I/O infrastructure.
   conversion path because NumPy is not installed in this environment.
 - `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 46 passed and
   1 skipped in 0.25s on the final M4 run. The skipped test remains the optional
+  NumPy array conversion path because NumPy is not installed in this environment.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 52 passed and
+  1 skipped in 0.32s on the final M5 run. The skipped test remains the optional
   NumPy array conversion path because NumPy is not installed in this environment.
 
 ## Known Limitations
@@ -133,6 +147,13 @@ grid domain model and keyword I/O infrastructure.
 - `FormattedKeywordReader` supports the GRDECL-style text keyword syntax already
   implemented by `GrdeclParser`; it does not claim every simulator formatted-file
   variant.
+- GRID/EGRID reader support is limited to formatted GRDECL-style keyword content.
+  Unformatted binary GRID/EGRID files are still unsupported.
+- INIT reader support is limited to formatted GRDECL-style keyword content.
+  It loads selected properties after parsing the formatted keyword file; no
+  persistent large-file index or lazy binary payload loading exists yet.
+- Property layout inference is shape-based. When active and global sizes are the
+  same, the property is conservatively classified as global-sized.
 
 ## Assumptions
 
@@ -152,3 +173,6 @@ grid domain model and keyword I/O infrastructure.
 - M4 assumes 4-byte or 8-byte unsigned Fortran record markers. Endian detection
   is intentionally simple and validates only the first record's matching marker
   pair.
+- M5 treats formatted GRID/EGRID/INIT sample fixtures as GRDECL-style keyword
+  text. This is a narrow implementation slice, not a guarantee for all simulator
+  formatted output variants.

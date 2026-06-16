@@ -6,6 +6,7 @@ from reservoir_data.domain.format.file_format import FileCategory
 from reservoir_data.exceptions.errors import (
     FileDetectionError,
     FileReadError,
+    GridGeometryError,
     UnsupportedFormatError,
 )
 from reservoir_data.public.case_facade import SimulationCase
@@ -74,16 +75,16 @@ def test_opening_missing_basename_raises_file_read_error(tmp_path: Path) -> None
         SimulationCase.open(tmp_path / "MISSING")
 
 
-def test_unsupported_loader_fails_explicitly_when_files_exist(tmp_path: Path) -> None:
+def test_grid_loader_reports_malformed_grid_files(tmp_path: Path) -> None:
     _touch(tmp_path, "CASE.EGRID")
 
     case = SimulationCase.open(tmp_path / "CASE")
 
-    with pytest.raises(UnsupportedFormatError, match="does not parse file payloads"):
+    with pytest.raises(GridGeometryError, match="SPECGRID"):
         case.load_grid()
 
 
-def test_loader_reports_missing_category_before_unsupported_parser(
+def test_loader_reports_missing_grid_category(
     tmp_path: Path,
 ) -> None:
     _touch(tmp_path, "CASE.DATA")
@@ -92,3 +93,12 @@ def test_loader_reports_missing_category_before_unsupported_parser(
 
     with pytest.raises(FileReadError, match="No grid files"):
         case.load_grid()
+
+
+def test_restart_loader_remains_explicitly_unsupported(tmp_path: Path) -> None:
+    _touch(tmp_path, "CASE.UNRST")
+
+    case = SimulationCase.open(tmp_path / "CASE")
+
+    with pytest.raises(UnsupportedFormatError, match="does not parse file payloads"):
+        case.load_restarts()

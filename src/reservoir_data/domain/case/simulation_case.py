@@ -8,6 +8,8 @@ from typing import NoReturn, Sequence, Union
 
 from reservoir_data.domain.case.case_manifest import CaseManifest
 from reservoir_data.domain.format.file_format import FileCategory
+from reservoir_data.domain.grid.reservoir_grid import ReservoirGrid
+from reservoir_data.domain.property.property_collection import PropertyCollection
 from reservoir_data.exceptions.errors import FileReadError, UnsupportedFormatError
 from reservoir_data.schemas.detection import FormatDetectionResult
 from reservoir_data.schemas.loading import LoadCaseOptions
@@ -49,14 +51,38 @@ class SimulationCase:
 
         return self.manifest.files_for(category)
 
-    def load_grid(self) -> NoReturn:
+    def load_grid(self) -> ReservoirGrid:
         self._require_category(FileCategory.GRID, "grid")
-        self._unsupported("GRID/EGRID grid loading")
+        from reservoir_data.application.grid_property_service import (
+            GridPropertyService,
+        )
 
-    def load_properties(self, names: Sequence[str] | None = None) -> NoReturn:
-        del names
+        return GridPropertyService().load_grid(
+            self.manifest,
+            preference=self.options.preferred_format,
+        )
+
+    def load_properties(
+        self, names: Sequence[str] | None = None
+    ) -> PropertyCollection:
         self._require_category(FileCategory.INIT, "initialization/property")
-        self._unsupported("INIT/property loading")
+        from reservoir_data.application.grid_property_service import (
+            GridPropertyService,
+        )
+
+        service = GridPropertyService()
+        grid = None
+        if self.has_data(FileCategory.GRID):
+            grid = service.load_grid(
+                self.manifest,
+                preference=self.options.preferred_format,
+            )
+        return service.load_properties(
+            self.manifest,
+            names=names,
+            grid=grid,
+            preference=self.options.preferred_format,
+        )
 
     def load_restarts(self) -> NoReturn:
         self._require_category(FileCategory.RESTART, "restart")
