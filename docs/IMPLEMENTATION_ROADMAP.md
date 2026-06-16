@@ -78,6 +78,11 @@ Dependencies: M1.
 Reason: GRDECL, properties, INIT-like text payloads, and some exports depend on
 neutral keyword records and datasets.
 
+Status: complete for the scoped M2 behavior. Keyword records/datasets,
+`KeywordQuery`, the GRDECL tokenizer, the GRDECL parser, and the GRDECL reader
+have implemented behavior and tests. This does not include binary keyword
+records, full deck semantic validation, or grid/property construction.
+
 Acceptance criteria:
 
 - `KeywordRecord`, `KeywordDataset`, `KeywordType`, and `KeywordQuery` have real

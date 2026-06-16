@@ -2,9 +2,8 @@
 
 ## Current Milestone
 
-M1: Project Foundation and Case Discovery is complete for the scoped foundation
-behavior. The next automatic milestone is M2: Keyword Records and GRDECL Text
-Parser.
+M2: Keyword Records and GRDECL Text Parser is complete for the scoped behavior.
+The next automatic milestone is M3: Grid Domain Model and Active/Global Mapping.
 
 ## Completed Work
 
@@ -29,23 +28,32 @@ Parser.
   when matching files exist, and `FileReadError` when required categories are
   absent.
 - Focused M1 tests added.
+- `KeywordType`, `KeywordRecord`, and `KeywordDataset` implemented.
+- `KeywordQuery` and `CaseSensitivity` schemas implemented.
+- `AmbiguousKeywordError` added for occurrence-ambiguous keyword queries.
+- GRDECL tokenizer implemented for whitespace, comments, slash terminators,
+  quoted strings, and escaped quote characters.
+- GRDECL parser implemented for ordered keyword records, repeat syntax, integer,
+  float, double-exponent, string, logical, empty-string, and defaulted values.
+- GRDECL reader implemented for text files with `FileReadError` wrapping.
+- Focused M2 tests added.
 
 ## Work In Progress
 
-- None for M1.
+- None for M2.
 
 ## Next Planned Task
 
-Implement M2: keyword records, keyword datasets, `KeywordQuery`, and the first
-GRDECL text parser vertical slice.
+Implement M3: grid dimensions, cell indexes, reservoir grid skeleton,
+grid cells, grid geometry placeholders with real validation behavior, and
+active/global cell mapping.
 
 ## Blockers
 
-- None for M1.
+- None for M3 foundation behavior.
 
 ## Deferred Specification Items
 
-- GRDECL parsing.
 - GRID/EGRID parsing.
 - INIT/property loading.
 - Binary record infrastructure.
@@ -62,16 +70,22 @@ GRDECL text parser vertical slice.
   extra in editable mode.
 - `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 22 passed in
   0.12s on the final run.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 29 passed in
+  0.21s on the final M2 run.
 
 ## Known Limitations
 
-- No payload formats are parsed yet.
+- Only GRDECL text keyword payloads are parsed.
 - Discovery will be filename-based until format readers and binary/text sniffing
   are implemented.
 - Exact formatted and non-unified extension conventions are conservative and
   require independent verification before being advertised as complete support.
 - Public loaders for grid, properties, restart, summary, wells, and RFT/PLT are
   intentionally unsupported beyond discovery until their parser milestones.
+- GRDECL parsing does not perform deck semantics, grid construction, property
+  shape validation, or binary/formatted simulator keyword parsing.
+- GRDECL bare default repeats such as `3*` are represented as `None`; later
+  domain validators decide whether defaults are legal for a given keyword.
 
 ## Assumptions
 
@@ -81,3 +95,6 @@ GRDECL text parser vertical slice.
   default interpreter in this environment.
 - First milestone should prioritize honest discovery and shared architecture over
   unsupported parser claims.
+- GRDECL type inference is conservative: numeric values promote to float or
+  double only when syntax requires it; otherwise mixed semantic records are
+  marked `MIXED` instead of guessed.

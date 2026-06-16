@@ -6,10 +6,13 @@ from reservoir_data.schemas.loading import (
     FormattedFilePreference,
     LoadCaseOptions,
 )
+from reservoir_data.schemas.queries import CaseSensitivity, KeywordQuery
 
 __all__ = [
     "CachePolicy",
+    "CaseSensitivity",
     "FormattedFilePreference",
     "FormatDetectionResult",
+    "KeywordQuery",
     "LoadCaseOptions",
 ]

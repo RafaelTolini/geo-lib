@@ -1,6 +1,7 @@
 """Exception exports for reservoir_data."""
 
 from reservoir_data.exceptions.errors import (
+    AmbiguousKeywordError,
     EncodingError,
     FileDetectionError,
     FileReadError,
@@ -19,6 +20,7 @@ from reservoir_data.exceptions.errors import (
 
 __all__ = [
     "EncodingError",
+    "AmbiguousKeywordError",
     "FileDetectionError",
     "FileReadError",
     "GridGeometryError",

@@ -29,6 +29,10 @@ class MissingKeywordError(ReservoirDataError):
     """Raised when a required keyword is absent."""
 
 
+class AmbiguousKeywordError(ReservoirDataError):
+    """Raised when a keyword query matches multiple records ambiguously."""
+
+
 class InvalidReportStepError(ReservoirDataError):
     """Raised for unavailable report steps or invalid time queries."""
 
