@@ -95,10 +95,23 @@ def test_loader_reports_missing_grid_category(
         case.load_grid()
 
 
-def test_restart_loader_remains_explicitly_unsupported(tmp_path: Path) -> None:
+def test_unformatted_restart_loader_remains_explicitly_unsupported(
+    tmp_path: Path,
+) -> None:
     _touch(tmp_path, "CASE.UNRST")
 
     case = SimulationCase.open(tmp_path / "CASE")
 
-    with pytest.raises(UnsupportedFormatError, match="does not parse file payloads"):
+    with pytest.raises(UnsupportedFormatError, match="formatted restart"):
         case.load_restarts()
+
+
+def test_unformatted_summary_loader_remains_explicitly_unsupported(
+    tmp_path: Path,
+) -> None:
+    _touch(tmp_path, "CASE.SMSPEC", "CASE.UNSMRY")
+
+    case = SimulationCase.open(tmp_path / "CASE")
+
+    with pytest.raises(UnsupportedFormatError, match="formatted summary"):
+        case.load_summary()

@@ -14,6 +14,8 @@ stubs, fake parsers, and unsupported format claims do not count as completion.
 - Explicit exception model.
 - Typed schemas, DTOs, and value objects.
 - Public facade for opening cases and discovering available data.
+- Thin public facade modules for grid, property, restart, summary, well, and
+  RFT/PLT domain workflows.
 - Case discovery and file type detection.
 - GRDECL text tokenization and parsing.
 - Keyword records and keyword datasets.
@@ -28,9 +30,12 @@ stubs, fake parsers, and unsupported format claims do not count as completion.
 - RFT/PLT records and cell measurements.
 - Well timelines, snapshots, connections, segments, and rates.
 - Lazy loading, large-file behavior, and optional cache/index support.
+- Typed grid, restart, and summary load option schemas.
 - NumPy integration at array boundaries.
+- Numeric tuple and optional NumPy export boundaries for keyword/property data.
 - Optional pandas and CSV export boundaries.
 - Selective writer/export support where explicitly implemented.
+- Tabular grid cell and property CSV export for supported loaded data.
 
 ## Milestones
 
@@ -220,6 +225,16 @@ Dependencies: M4 and M5.
 Reason: restart payloads depend on binary keyword infrastructure and grid
 property mapping.
 
+Status: complete for the scoped M6 behavior. `RestartHeader`, `RestartReport`,
+and `RestartDataset` implement report metadata, sequence/step/day/date lookup,
+and lazy report payload access. `FormattedRestartReader` indexes formatted
+GRDECL-style restart fixtures using `REPORT` blocks, supports formatted unified
+files and formatted non-unified report-step files, and maps loaded report
+keywords to `GridProperty` objects when a grid is supplied. Public
+`SimulationCase.load_restarts()` now loads supported formatted restart files.
+Simulator-specific binary restart keyword payload decoding, full restart header
+semantics, well extraction, and restart writing remain out of scope.
+
 Acceptance criteria:
 
 - Unified and non-unified restart files can be indexed.
@@ -245,6 +260,17 @@ Dependencies: M4.
 
 Reason: summary metadata and vector files require binary/formatted keyword
 infrastructure, but do not require a loaded grid.
+
+Status: complete for the scoped M7 behavior. `SummaryKey`, `SummaryMetadata`,
+`SummaryVector`, and `SummaryDataset` implement vector metadata, time axes,
+exact report/date/day lookup, wildcard and qualifier filtering, lazy vector
+value loading, generic linear interpolation/resampling, CSV export, and optional
+NumPy/pandas export boundaries. `FormattedSummaryReader` and `SummaryService`
+load formatted GRDECL-style summary fixtures using `VECTOR`, `TIME`, `DATES`,
+`REPORTS`, and `VALUES` records, including formatted unified and formatted
+non-unified report-step files. Simulator-specific binary `SMSPEC`/`UNSMRY`
+payload decoding, complete vector classification guarantees, and summary
+writing remain out of scope.
 
 Acceptance criteria:
 
@@ -273,6 +299,18 @@ Dependencies: M5, M6, and M7 where timeline alignment is needed.
 Reason: well state and RFT/PLT records reference report steps, cells, rates, and
 grid locations.
 
+Status: complete for the scoped M8 behavior. `WellDataset`, `WellTimeline`,
+`WellSnapshot`, `WellConnection`, and `WellSegment` implement well names,
+timeline navigation, snapshot state, rates, connections, optional segment data,
+and grid-backed connection validation from supported formatted restart records.
+`RftDataset`, `RftRecord`, and `RftCellMeasurement` implement formatted RFT/PLT
+record indexing, well/date/type queries, lazy measurement loading, pressures,
+depths, saturations, and phase rates. `FormattedWellReader`,
+`FormattedRftReader`, `WellService`, `RftService`, and public
+`SimulationCase.load_wells()`/`load_rft()` wire these workflows for scoped
+GRDECL-style text fixtures. Binary/vendor-specific well records, complete
+restart well extraction, and unformatted RFT/PLT decoding remain out of scope.
+
 Acceptance criteria:
 
 - Well names and timelines can be built from supported restart records.
@@ -297,6 +335,18 @@ Dependencies: M4 through M8.
 
 Reason: lazy loading and caches need real payload readers before memory behavior
 can be validated honestly.
+
+Status: complete for the scoped M9 behavior. `PropertyCollection` now supports
+lazy `GridProperty` loaders, and public property loading honors
+`LoadCaseOptions.lazy_loading` so selected formatted INIT properties are indexed
+without materializing values until requested. `SourceFingerprint` and
+`JsonIndexCache` implement optional source-identity cache/index files with
+resolved path, size, and modification time invalidation. Formatted summary
+loading can use `LoadCaseOptions.cache_policy` to persist and reuse metadata/time
+axis/vector-key indexes while keeping vector values lazy. Eager/lazy equivalence,
+cache hit/miss, and cache invalidation are validated. Binary payload lazy loading,
+memory mapping/chunked reading, cache support for every reader, and hard
+thread-safety guarantees remain out of scope.
 
 Acceptance criteria:
 
@@ -324,6 +374,18 @@ Dependencies: M2 through M9, depending on target.
 Reason: writers must preserve simulator-compatible organization and should only
 be added after readers and domain objects are validated.
 
+Status: complete for the scoped M10 behavior. `PropertyExportOptions`,
+`PropertyExportLayout`, and `ExportFormat` define typed export boundaries.
+`GrdeclWriter` writes the GRDECL-style text subset supported by the current
+parser, including strings, logicals, numerics, and defaulted values.
+`ExportService` exports supported grid geometry (`SPECGRID`, `COORD`, `ZCORN`,
+and optional `ACTNUM`) and selected grid properties in native, active, or global
+layout. Public `SimulationCase.export_grid_grdecl(...)` and
+`export_properties_grdecl(...)` expose these workflows. Exported grid/property
+text round-trips through existing readers in tests. Full deck writing,
+arbitrary restart/summary rewriting, binary writers, and broad simulator-format
+writers remain out of scope.
+
 Acceptance criteria:
 
 - GRDECL geometry/property export is implemented and tested.
@@ -342,6 +404,184 @@ Out of scope:
 - Full deck schedule editing.
 - Arbitrary restart or summary rewriting unless independently required and
   validated.
+
+### M11: Tabular Grid and Property Export
+
+Dependencies: M3, M5, and M10.
+
+Reason: the specification calls for users to inspect and export grid geometry,
+cell indexes, and grid property values as tabular data. This is unblocked by the
+validated grid/property domain model and the selective export service, and it can
+be implemented without claiming unsupported binary or vendor-format behavior.
+
+Status: complete for the scoped M11 behavior. `GridTableExportOptions` and
+`PropertyTableExportOptions` define typed CSV/table export boundaries.
+`ExportService` now returns tabular grid cell rows and writes grid cell CSV with
+zero-based indexes, simulator one-based indexes, activity, active/global mapping,
+and lightweight top/bottom/depth/thickness values. It also returns and writes
+long-form property rows for selected properties in native, active, or global
+layout with inactive defaults where applicable. Public
+`SimulationCase.export_grid_cell_csv(...)` and `export_properties_csv(...)`
+expose these workflows. Full pandas DataFrame exports for grid/properties,
+corner-point XYZ coordinate tables, volumes, units, local grids, NNC, binary
+writers, and vendor-specific tabular semantics remain out of scope.
+
+Acceptance criteria:
+
+- Grid cell rows and CSV include stable index, activity, and lightweight
+  geometry columns for supported grids.
+- Property table rows and CSV support selected properties and native, active, or
+  global layout export.
+- Inactive defaults are respected when active-sized properties are expanded to
+  global rows.
+- Public facade methods expose the supported CSV export workflows.
+
+Test requirements:
+
+- Grid cell row and CSV tests.
+- Property table row and CSV tests for active/global layout conversion.
+- Public facade CSV export tests.
+
+Out of scope:
+
+- pandas DataFrame export for grid/property tables.
+- Full corner-point XYZ reconstruction, cell volumes, local grids, dual grids,
+  and NNC table export.
+- Unit conversion and simulator-specific table schemas.
+- Binary or broad simulator-format writers.
+
+### M12: Typed Load Options and Service Enforcement
+
+Dependencies: M5, M6, M7, and M9.
+
+Reason: the specification defines `GridLoadOptions`, `RestartLoadOptions`, and
+`SummaryLoadOptions` as user-facing contracts for loader behavior. These options
+should exist only once the corresponding loaders have real behavior, so the
+library can honor supported options and reject unsupported advanced requests
+without silently ignoring them.
+
+Status: complete for the scoped M12 behavior. `GridLoadOptions`,
+`RestartLoadOptions`, and `SummaryLoadOptions` are implemented with supporting
+enums for geometry validation, restart grid association, summary key separator,
+and summary time units. `SimulationCase.load_grid(...)`,
+`load_restarts(...)`, and `load_summary(...)` accept these option objects.
+Grid loading validates supported basic/no geometry validation and rejects local
+grids, NNC metadata, coordinate-transform application, lazy geometry arrays, and
+full corner-point validation. Restart loading honors requested report-step
+filters and eager keyword payload loading, preserves header-only lazy behavior,
+and rejects restart well-data extraction through this path. Summary loading
+honors vector filtering and eager vector value loading, while rejecting
+unsupported restart metadata inclusion, non-colon key policies, non-day time
+policies, and relaxed metadata validation.
+
+Acceptance criteria:
+
+- Load option DTOs exist with normalized enum and iterable fields.
+- Public facade methods accept the scoped option objects.
+- Supported options alter returned datasets or loading behavior in tests.
+- Unsupported advanced options raise explicit `UnsupportedFormatError`.
+
+Test requirements:
+
+- Grid load option acceptance and unsupported-option tests.
+- Restart requested-report filtering and eager payload tests.
+- Summary vector-filter and eager value tests.
+- Unsupported advanced option tests.
+
+Out of scope:
+
+- Full local-grid, dual-grid, NNC, and full geometry validation support.
+- Restart well extraction through `RestartLoadOptions`.
+- Summary restart metadata fusion, alternate key separators, alternate time
+  units, and relaxed metadata validation.
+- Binary/unformatted option behavior beyond existing explicit unsupported
+  errors.
+
+### M13: Keyword and Property NumPy Boundary Hardening
+
+Dependencies: M2, M3, and M5.
+
+Reason: the specification calls for keyword records and grid properties to
+provide typed array access and optional NumPy conversion at boundaries. This can
+be implemented safely after keyword parsing and grid/property layout conversion
+exist, without adding NumPy as a core dependency or claiming mutable shared-array
+semantics for tuple-backed data.
+
+Status: complete for the scoped M13 behavior. `KeywordRecord.numeric_values(...)`
+returns validated numeric tuples, supports explicit replacement of defaulted
+values, and rejects logical/string values instead of coercing them.
+`KeywordRecord.to_numpy(...)` provides an optional NumPy conversion boundary with
+an explicit missing-dependency error. `GridProperty.numeric_values(...)` and
+`to_numpy(...)` provide the same behavior for native, active, and global
+property layouts, reusing existing active/global shape conversion and inactive
+defaults. NumPy remains optional, and tuple-backed records/properties return
+copied arrays when NumPy is available.
+
+Acceptance criteria:
+
+- Keyword records expose numeric tuple conversion with clear errors for
+  defaulted, logical, and string values.
+- Keyword records expose an optional NumPy array boundary with explicit missing
+  dependency behavior.
+- Grid properties expose numeric tuple and optional NumPy conversion for native,
+  active, and global layouts.
+- Property conversion honors active/global mapping and inactive defaults.
+
+Test requirements:
+
+- Keyword numeric/default/non-numeric conversion tests.
+- Property native/active/global numeric conversion tests.
+- Optional NumPy boundary tests that pass whether NumPy is installed or absent.
+
+Out of scope:
+
+- NumPy as a required dependency.
+- Mutable shared-view semantics for tuple-backed keyword/property values.
+- Memory mapping, chunked binary arrays, or binary keyword numeric buffers.
+- Unit conversion while exporting numeric arrays.
+
+### M14: Public Facade Module Surface
+
+Dependencies: M5 through M13, depending on exposed domain object.
+
+Reason: the specification proposes thin public facade modules for grid,
+restart, summary, and well workflows, and the public API should expose stable
+user-facing imports without requiring users to know internal domain module paths.
+These modules should be added only after the underlying domain objects and option
+schemas have real behavior, so public imports do not advertise unsupported
+workflows.
+
+Status: complete for the scoped M14 behavior. Public facade modules now exist
+for grid, property, restart, summary, well, and RFT/PLT workflows. They re-export
+the already implemented domain/result objects and relevant option/query/export
+schemas without duplicating loader logic. `reservoir_data.public` also exposes
+the same stable surface alongside `SimulationCase`. These facades are import
+boundaries only; binary/vendor support and unsupported advanced workflow options
+remain governed by the underlying services and domain objects.
+
+Acceptance criteria:
+
+- Public grid, property, restart, summary, well, and RFT/PLT facade modules are
+  importable.
+- Facades expose the implemented domain objects and relevant DTOs through
+  explicit `__all__` lists.
+- `reservoir_data.public` exposes the same stable facade classes.
+- Tests validate public facade imports resolve to the implemented domain/schema
+  classes.
+
+Test requirements:
+
+- Import tests for each public facade module.
+- Constructibility tests for exported option DTOs.
+- Identity tests proving public exports refer to implemented domain/schema
+  classes.
+
+Out of scope:
+
+- New loader behavior beyond existing `SimulationCase` methods.
+- Compatibility aliases for external APIs.
+- Public exposure of low-level binary/parser internals.
+- Claiming support for binary/vendor-specific workflows through facade names.
 
 ## Deferred Independent Verification
 

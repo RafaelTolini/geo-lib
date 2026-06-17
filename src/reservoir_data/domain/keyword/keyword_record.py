@@ -9,6 +9,7 @@ from reservoir_data.domain.keyword.keyword_type import KeywordType
 from reservoir_data.exceptions.errors import UnsupportedFormatError
 
 KeywordValue = int | float | str | bool | None
+NumericKeywordValue = int | float
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +73,49 @@ class KeywordRecord:
         """Return an immutable copy-friendly value tuple."""
 
         return tuple(self.values)
+
+    def numeric_values(
+        self,
+        default_value: NumericKeywordValue | None = None,
+    ) -> tuple[NumericKeywordValue, ...]:
+        """Return values as a numeric tuple.
+
+        Defaulted GRDECL values (`None`) require an explicit numeric replacement.
+        Logical and string values are rejected instead of being coerced.
+        """
+
+        numeric: list[NumericKeywordValue] = []
+        for index, value in enumerate(self.values):
+            if value is None:
+                if default_value is None:
+                    raise UnsupportedFormatError(
+                        f"Keyword {self.name} value {index} is defaulted; "
+                        "provide default_value for numeric conversion"
+                    )
+                numeric.append(default_value)
+            elif isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise UnsupportedFormatError(
+                    f"Keyword {self.name} value {index} is not numeric: {value!r}"
+                )
+            else:
+                numeric.append(value)
+        return tuple(numeric)
+
+    def to_numpy(
+        self,
+        default_value: NumericKeywordValue | None = None,
+        dtype: object | None = None,
+    ) -> object:
+        """Return numeric values as a NumPy array when NumPy is installed."""
+
+        try:
+            import numpy as np  # type: ignore[import-not-found]
+        except ImportError as error:
+            raise UnsupportedFormatError("NumPy is not installed") from error
+        return np.asarray(
+            self.numeric_values(default_value=default_value),
+            dtype=dtype,
+        )
 
     def require_type(self, expected_type: KeywordType) -> "KeywordRecord":
         """Validate the record type and return this record for fluent use."""

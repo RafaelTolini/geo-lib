@@ -8,8 +8,16 @@ from enum import StrEnum
 
 from reservoir_data.domain.grid.cell_index import CellIndex
 from reservoir_data.domain.grid.reservoir_grid import ReservoirGrid
-from reservoir_data.domain.keyword.keyword_record import KeywordRecord, KeywordValue
-from reservoir_data.exceptions.errors import InvalidCellIndexError, PropertyShapeError
+from reservoir_data.domain.keyword.keyword_record import (
+    KeywordRecord,
+    KeywordValue,
+    NumericKeywordValue,
+)
+from reservoir_data.exceptions.errors import (
+    InvalidCellIndexError,
+    PropertyShapeError,
+    UnsupportedFormatError,
+)
 
 
 class PropertyLayout(StrEnum):
@@ -124,12 +132,61 @@ class GridProperty:
             f"Property {self.name} layout is unknown and cannot be evaluated"
         )
 
+    def numeric_values(
+        self,
+        layout: PropertyLayout | str | None = None,
+        default_value: NumericKeywordValue | None = None,
+    ) -> tuple[NumericKeywordValue, ...]:
+        """Return numeric values in the requested layout."""
+
+        values = self._values_for_layout(layout, default_value=default_value)
+        return KeywordRecord.from_values(self.name, values).numeric_values(
+            default_value=default_value
+        )
+
+    def to_numpy(
+        self,
+        layout: PropertyLayout | str | None = None,
+        default_value: NumericKeywordValue | None = None,
+        dtype: object | None = None,
+    ) -> object:
+        """Return property values as a NumPy array when NumPy is installed."""
+
+        try:
+            import numpy as np  # type: ignore[import-not-found]
+        except ImportError as error:
+            raise UnsupportedFormatError("NumPy is not installed") from error
+        return np.asarray(
+            self.numeric_values(layout=layout, default_value=default_value),
+            dtype=dtype,
+        )
+
     def _require_grid(self) -> ReservoirGrid:
         if self.grid is None:
             raise PropertyShapeError(
                 f"Property {self.name} is not associated with a grid"
             )
         return self.grid
+
+    def _values_for_layout(
+        self,
+        layout: PropertyLayout | str | None,
+        default_value: KeywordValue,
+    ) -> tuple[KeywordValue, ...]:
+        if layout is None:
+            return tuple(self.values)
+
+        target_layout = PropertyLayout(layout)
+        if target_layout is PropertyLayout.ACTIVE:
+            return self.to_active_array()
+        if target_layout is PropertyLayout.GLOBAL:
+            return self.to_global_array(default_value=default_value)
+        if self.layout is PropertyLayout.UNKNOWN:
+            return tuple(self.values)
+        raise PropertyShapeError(
+            f"Property {self.name} has known layout {self.layout}; "
+            "use ACTIVE or GLOBAL when requesting converted values"
+        )
 
     def _validate_shape(self, grid: ReservoirGrid) -> None:
         if self.layout is PropertyLayout.GLOBAL and len(self.values) != grid.total_cell_count:

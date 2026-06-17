@@ -10,9 +10,24 @@ from reservoir_data.domain.case.case_manifest import CaseManifest
 from reservoir_data.domain.format.file_format import FileCategory
 from reservoir_data.domain.grid.reservoir_grid import ReservoirGrid
 from reservoir_data.domain.property.property_collection import PropertyCollection
+from reservoir_data.domain.restart.restart_dataset import RestartDataset
+from reservoir_data.domain.rft.rft_dataset import RftDataset
+from reservoir_data.domain.summary.summary_dataset import SummaryDataset
+from reservoir_data.domain.well.well_dataset import WellDataset
 from reservoir_data.exceptions.errors import FileReadError, UnsupportedFormatError
 from reservoir_data.schemas.detection import FormatDetectionResult
-from reservoir_data.schemas.loading import LoadCaseOptions
+from reservoir_data.schemas.export import (
+    GridTableExportOptions,
+    PropertyExportOptions,
+    PropertyTableExportOptions,
+)
+from reservoir_data.schemas.loading import (
+    GridLoadOptions,
+    LoadCaseOptions,
+    RestartGridAssociationMode,
+    RestartLoadOptions,
+    SummaryLoadOptions,
+)
 
 CasePath = Union[str, Path]
 
@@ -51,7 +66,7 @@ class SimulationCase:
 
         return self.manifest.files_for(category)
 
-    def load_grid(self) -> ReservoirGrid:
+    def load_grid(self, options: GridLoadOptions | None = None) -> ReservoirGrid:
         self._require_category(FileCategory.GRID, "grid")
         from reservoir_data.application.grid_property_service import (
             GridPropertyService,
@@ -60,6 +75,7 @@ class SimulationCase:
         return GridPropertyService().load_grid(
             self.manifest,
             preference=self.options.preferred_format,
+            options=options,
         )
 
     def load_properties(
@@ -82,13 +98,45 @@ class SimulationCase:
             names=names,
             grid=grid,
             preference=self.options.preferred_format,
+            lazy=self.options.lazy_loading,
         )
 
-    def load_restarts(self) -> NoReturn:
+    def load_restarts(
+        self,
+        associate_grid: bool = False,
+        options: RestartLoadOptions | None = None,
+    ) -> RestartDataset:
         self._require_category(FileCategory.RESTART, "restart")
-        self._unsupported("restart loading")
+        from reservoir_data.application.grid_property_service import (
+            GridPropertyService,
+        )
+        from reservoir_data.application.restart_service import RestartService
 
-    def load_summary(self) -> NoReturn:
+        resolved_options = options or RestartLoadOptions()
+        grid_association = resolved_options.grid_association_mode
+        grid = None
+        should_associate_grid = (
+            associate_grid
+            or grid_association is RestartGridAssociationMode.OPTIONAL
+            or grid_association is RestartGridAssociationMode.REQUIRED
+        )
+        if should_associate_grid and self.has_data(FileCategory.GRID):
+            grid = GridPropertyService().load_grid(
+                self.manifest,
+                preference=self.options.preferred_format,
+            )
+        elif grid_association is RestartGridAssociationMode.REQUIRED:
+            raise FileReadError(
+                f"No grid files were discovered for case '{self.case_name}'"
+            )
+        return RestartService().load_restarts(
+            self.manifest,
+            grid=grid,
+            preference=self.options.preferred_format,
+            options=resolved_options,
+        )
+
+    def load_summary(self, options: SummaryLoadOptions | None = None) -> SummaryDataset:
         if not (
             self.has_data(FileCategory.SUMMARY_METADATA)
             or self.has_data(FileCategory.SUMMARY_DATA)
@@ -96,19 +144,108 @@ class SimulationCase:
             raise FileReadError(
                 f"No summary files were discovered for case '{self.case_name}'"
             )
-        self._unsupported("summary loading")
+        from reservoir_data.application.summary_service import SummaryService
 
-    def load_wells(self, load_segments: bool = True) -> NoReturn:
-        del load_segments
+        return SummaryService().load_summary(
+            self.manifest,
+            preference=self.options.preferred_format,
+            cache_policy=self.options.cache_policy,
+            options=options,
+        )
+
+    def load_wells(self, load_segments: bool = True) -> WellDataset:
         self._require_category(FileCategory.RESTART, "restart well")
-        self._unsupported("well timeline extraction")
+        from reservoir_data.application.grid_property_service import (
+            GridPropertyService,
+        )
+        from reservoir_data.application.well_service import WellService
 
-    def load_rft(self) -> NoReturn:
+        grid = None
+        if self.has_data(FileCategory.GRID):
+            grid = GridPropertyService().load_grid(
+                self.manifest,
+                preference=self.options.preferred_format,
+            )
+        return WellService().load_wells(
+            self.manifest,
+            load_segments=load_segments,
+            grid=grid,
+            preference=self.options.preferred_format,
+        )
+
+    def load_rft(self) -> RftDataset:
         if not (self.has_data(FileCategory.RFT) or self.has_data(FileCategory.PLT)):
             raise FileReadError(
                 f"No RFT/PLT files were discovered for case '{self.case_name}'"
             )
-        self._unsupported("RFT/PLT loading")
+        from reservoir_data.application.grid_property_service import (
+            GridPropertyService,
+        )
+        from reservoir_data.application.rft_service import RftService
+
+        grid = None
+        if self.has_data(FileCategory.GRID):
+            grid = GridPropertyService().load_grid(
+                self.manifest,
+                preference=self.options.preferred_format,
+            )
+        return RftService().load_rft(
+            self.manifest,
+            grid=grid,
+            preference=self.options.preferred_format,
+        )
+
+    def export_grid_grdecl(self, path: CasePath) -> None:
+        """Export the supported grid geometry as GRDECL text."""
+
+        from reservoir_data.application.export_service import ExportService
+
+        ExportService().write_grid_grdecl(self.load_grid(), path)
+
+    def export_grid_cell_csv(
+        self,
+        path: CasePath,
+        options: GridTableExportOptions | None = None,
+    ) -> None:
+        """Export grid cell metadata as CSV rows."""
+
+        from reservoir_data.application.export_service import ExportService
+
+        ExportService().write_grid_cell_csv(self.load_grid(), path, options=options)
+
+    def export_properties_grdecl(
+        self,
+        path: CasePath,
+        names: Sequence[str] | None = None,
+        options: PropertyExportOptions | None = None,
+    ) -> None:
+        """Export selected supported properties as GRDECL text."""
+
+        from reservoir_data.application.export_service import ExportService
+
+        ExportService().write_properties_grdecl(
+            self.load_properties(names=names),
+            path,
+            names=names,
+            options=options,
+        )
+
+    def export_properties_csv(
+        self,
+        path: CasePath,
+        names: Sequence[str] | None = None,
+        options: PropertyTableExportOptions | None = None,
+    ) -> None:
+        """Export selected supported properties as long-form CSV rows."""
+
+        from reservoir_data.application.export_service import ExportService
+
+        ExportService().write_properties_csv(
+            self.load_properties(names=names),
+            path,
+            names=names,
+            options=options,
+        )
 
     def _require_category(self, category: FileCategory, label: str) -> None:
         if not self.has_data(category):
