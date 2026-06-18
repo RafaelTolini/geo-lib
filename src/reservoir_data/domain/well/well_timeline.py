@@ -7,6 +7,7 @@ from datetime import date
 
 from reservoir_data.domain.well.well_snapshot import WellSnapshot
 from reservoir_data.exceptions.errors import InvalidReportStepError
+from reservoir_data.schemas.queries import ReportStepMatchPolicy, ReportStepQuery
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,3 +63,79 @@ class WellTimeline:
         raise InvalidReportStepError(
             f"Well {self.well_name!r} has no report date {report_date}"
         )
+
+    def nearest_at_report_step(self, report_step: int) -> WellSnapshot:
+        """Return the snapshot with the nearest available report step."""
+
+        if report_step < 0:
+            raise ValueError("report_step must be non-negative")
+        return self._nearest_snapshot(
+            target=float(report_step),
+            value=lambda snapshot: float(snapshot.report_step),
+            label="report step",
+        )
+
+    def nearest_at_simulation_days(self, simulation_days: float) -> WellSnapshot:
+        """Return the snapshot nearest to a simulation day."""
+
+        return self._nearest_snapshot(
+            target=float(simulation_days),
+            value=lambda snapshot: snapshot.simulation_days,
+            label="simulation day",
+        )
+
+    def nearest_at_date(self, report_date: date) -> WellSnapshot:
+        """Return the snapshot nearest to a report date."""
+
+        return self._nearest_snapshot(
+            target=float(report_date.toordinal()),
+            value=lambda snapshot: (
+                None
+                if snapshot.report_date is None
+                else float(snapshot.report_date.toordinal())
+            ),
+            label="report date",
+        )
+
+    def query(self, query: ReportStepQuery) -> WellSnapshot:
+        """Return a snapshot using a typed report query."""
+
+        nearest = query.match_policy is ReportStepMatchPolicy.NEAREST
+        if query.report_step is not None:
+            if nearest:
+                return self.nearest_at_report_step(query.report_step)
+            return self.at_report_step(query.report_step)
+        if query.sequence_index is not None:
+            if not 0 <= query.sequence_index < len(self.snapshots):
+                raise InvalidReportStepError(
+                    f"Well {self.well_name!r} sequence index "
+                    f"{query.sequence_index} is outside available range"
+                )
+            return self.snapshots[query.sequence_index]
+        if query.simulation_days is not None:
+            if nearest:
+                return self.nearest_at_simulation_days(query.simulation_days)
+            return self.at_simulation_days(query.simulation_days)
+        if query.report_date is not None:
+            if nearest:
+                return self.nearest_at_date(query.report_date)
+            return self.at_date(query.report_date)
+        raise InvalidReportStepError("ReportStepQuery does not specify a lookup field")
+
+    def _nearest_snapshot(
+        self,
+        target: float,
+        value,
+        label: str,
+    ) -> WellSnapshot:
+        candidates: list[tuple[float, int, WellSnapshot]] = []
+        for index, snapshot in enumerate(self.snapshots):
+            candidate = value(snapshot)
+            if candidate is None:
+                continue
+            candidates.append((abs(candidate - target), index, snapshot))
+        if not candidates:
+            raise InvalidReportStepError(
+                f"Well {self.well_name!r} has no {label} metadata"
+            )
+        return min(candidates, key=lambda item: (item[0], item[1]))[2]

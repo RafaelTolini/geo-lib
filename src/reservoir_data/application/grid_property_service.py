@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from reservoir_data.domain.case.case_manifest import CaseManifest
 from reservoir_data.domain.format.file_format import FileCategory
@@ -42,6 +43,16 @@ class GridPropertyService:
             )
         return self.grid_reader.read(detection.path)
 
+    def load_grid_from_path(
+        self,
+        path: str | Path,
+        options: GridLoadOptions | None = None,
+    ) -> ReservoirGrid:
+        """Load a supported formatted grid from an explicit path."""
+
+        self._validate_grid_options(options or GridLoadOptions())
+        return self.grid_reader.read(Path(path))
+
     def load_properties(
         self,
         manifest: CaseManifest,
@@ -60,6 +71,22 @@ class GridPropertyService:
             )
         return self.init_reader.read(
             detection.path,
+            grid=grid,
+            names=names,
+            lazy=lazy,
+        )
+
+    def load_properties_from_path(
+        self,
+        path: str | Path,
+        grid: ReservoirGrid | None = None,
+        names: Sequence[str] | None = None,
+        lazy: bool = True,
+    ) -> PropertyCollection:
+        """Load supported formatted initialization properties from a path."""
+
+        return self.init_reader.read(
+            Path(path),
             grid=grid,
             names=names,
             lazy=lazy,

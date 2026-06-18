@@ -94,6 +94,38 @@ class GridGeometry:
 
         return abs(self.cell_bottom(global_index) - self.cell_top(global_index))
 
+    def depth_range(self) -> tuple[float, float]:
+        """Return minimum and maximum stored corner depths."""
+
+        if not self.zcorn:
+            raise GridGeometryError("ZCORN contains no depth values")
+        return min(self.zcorn), max(self.zcorn)
+
+    def thickness_range(self) -> tuple[float, float]:
+        """Return minimum and maximum lightweight cell thickness."""
+
+        thicknesses = tuple(
+            self.cell_thickness(global_index)
+            for global_index in range(self.dimensions.total_cells)
+        )
+        if not thicknesses:
+            raise GridGeometryError("Grid contains no cells")
+        return min(thicknesses), max(thicknesses)
+
+    def cell_depth_rows(self) -> tuple[dict[str, object], ...]:
+        """Return lightweight per-cell depth metadata rows."""
+
+        return tuple(
+            {
+                "GLOBAL_INDEX": global_index,
+                "TOP": self.cell_top(global_index),
+                "BOTTOM": self.cell_bottom(global_index),
+                "DEPTH": self.cell_depth(global_index),
+                "THICKNESS": self.cell_thickness(global_index),
+            }
+            for global_index in range(self.dimensions.total_cells)
+        )
+
     def export_coord(self) -> tuple[float, ...]:
         """Return GRDECL-compatible COORD values."""
 

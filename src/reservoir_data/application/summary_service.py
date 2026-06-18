@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from reservoir_data.domain.case.case_manifest import CaseManifest
 from reservoir_data.domain.format.file_format import FileCategory
@@ -48,6 +50,44 @@ class SummaryService:
             data_detections,
             cache=self._cache_store(manifest, cache_policy),
         )
+        if resolved_options.vector_filter:
+            dataset = dataset.select(resolved_options.vector_filter)
+        if not resolved_options.lazy_vectors:
+            dataset.vectors()
+        return dataset
+
+    def load_summary_from_paths(
+        self,
+        metadata_path: str | Path,
+        data_paths: Iterable[str | Path],
+        report_steps: Iterable[int] | None = None,
+        options: SummaryLoadOptions | None = None,
+    ) -> SummaryDataset:
+        """Load formatted summary data from explicit metadata and data paths."""
+
+        resolved_options = options or SummaryLoadOptions()
+        self._validate_summary_options(resolved_options)
+        paths = tuple(Path(path) for path in data_paths)
+        if not paths:
+            raise FileReadError("No summary data paths were provided")
+
+        steps = None if report_steps is None else tuple(int(step) for step in report_steps)
+        if steps is not None and len(steps) != len(paths):
+            raise ValueError("report_steps must match the number of data paths")
+
+        data_detections = tuple(
+            FormatDetectionResult(
+                path=path,
+                file_category=FileCategory.SUMMARY_DATA,
+                formatted=True,
+                unified=steps is None,
+                report_step=None if steps is None else steps[index],
+                confidence=1.0,
+                diagnostics=("Explicit summary data path.",),
+            )
+            for index, path in enumerate(paths)
+        )
+        dataset = self.summary_reader.read(metadata_path, data_detections)
         if resolved_options.vector_filter:
             dataset = dataset.select(resolved_options.vector_filter)
         if not resolved_options.lazy_vectors:

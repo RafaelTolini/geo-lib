@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import NoReturn, Sequence, Union
 
 from reservoir_data.domain.case.case_manifest import CaseManifest
+from reservoir_data.domain.deck import DeckMetadata
 from reservoir_data.domain.format.file_format import FileCategory
 from reservoir_data.domain.grid.reservoir_grid import ReservoirGrid
 from reservoir_data.domain.property.property_collection import PropertyCollection
@@ -65,6 +66,27 @@ class SimulationCase:
         """Return detected files for a data category."""
 
         return self.manifest.files_for(category)
+
+    def file_rows(self) -> tuple[dict[str, object], ...]:
+        """Return discovered file rows without loading payloads."""
+
+        return self.manifest.file_rows()
+
+    def files_to_csv(self, path: CasePath) -> None:
+        """Write discovered file rows to CSV."""
+
+        self.manifest.files_to_csv(path)
+
+    def load_deck_metadata(self) -> DeckMetadata:
+        """Load externally useful metadata from a supported `.DATA` deck."""
+
+        self._require_category(FileCategory.DECK, "deck")
+        from reservoir_data.application.deck_service import DeckService
+
+        return DeckService().load_metadata(
+            self.manifest,
+            preference=self.options.preferred_format,
+        )
 
     def load_grid(self, options: GridLoadOptions | None = None) -> ReservoirGrid:
         self._require_category(FileCategory.GRID, "grid")
@@ -213,6 +235,16 @@ class SimulationCase:
 
         ExportService().write_grid_cell_csv(self.load_grid(), path, options=options)
 
+    def grid_cell_dataframe(
+        self,
+        options: GridTableExportOptions | None = None,
+    ) -> object:
+        """Return grid cell metadata as a pandas DataFrame when installed."""
+
+        from reservoir_data.application.export_service import ExportService
+
+        return ExportService().grid_cell_dataframe(self.load_grid(), options=options)
+
     def export_properties_grdecl(
         self,
         path: CasePath,
@@ -243,6 +275,21 @@ class SimulationCase:
         ExportService().write_properties_csv(
             self.load_properties(names=names),
             path,
+            names=names,
+            options=options,
+        )
+
+    def properties_dataframe(
+        self,
+        names: Sequence[str] | None = None,
+        options: PropertyTableExportOptions | None = None,
+    ) -> object:
+        """Return selected property rows as a pandas DataFrame when installed."""
+
+        from reservoir_data.application.export_service import ExportService
+
+        return ExportService().properties_to_dataframe(
+            self.load_properties(names=names),
             names=names,
             options=options,
         )

@@ -42,6 +42,10 @@ def test_file_detector_recognizes_supported_filename_patterns(
     assert result.report_step == report_step
     assert result.confidence > 0.0
     assert result.diagnostics
+    row = result.to_row()
+    assert row["FILE_NAME"] == filename
+    assert row["CATEGORY"] == category.value
+    assert row["FORMAT"] == result.format_label
 
 
 def test_file_detector_rejects_unknown_extension() -> None:

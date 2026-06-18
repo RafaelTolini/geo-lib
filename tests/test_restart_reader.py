@@ -11,7 +11,9 @@ from reservoir_data.formats.restart.formatted_restart_reader import (
     FormattedRestartReader,
 )
 from reservoir_data.public.case_facade import SimulationCase
+from reservoir_data.public.restart_facade import load_restarts_from_paths
 from reservoir_data.schemas.detection import FormatDetectionResult
+from reservoir_data.schemas.loading import RestartLoadOptions
 
 
 def _grid_text() -> str:
@@ -65,11 +67,32 @@ def test_formatted_restart_reader_indexes_unified_reports_lazily(
     assert dataset.report_steps() == (1, 2)
     assert dataset.headers()[0].simulation_days == 10.0
     assert dataset.headers()[0].report_date == date(2026, 1, 10)
+    assert dataset.timeline_rows()[0] == {
+        "REPORT_STEP": 1,
+        "SEQUENCE_INDEX": 0,
+        "SIMULATION_DAYS": 10.0,
+        "DATE": "2026-01-10",
+        "SOURCE": str(path),
+    }
 
     report = dataset.report_by_step(2)
     assert not report.is_payload_loaded
     assert report.keywords.names() == ("PRESSURE",)
     assert report.is_payload_loaded
+    assert report.keyword_rows()[0]["KEYWORD"] == "PRESSURE"
+    keyword_csv_path = tmp_path / "restart_keywords.csv"
+    report.keywords_to_csv(keyword_csv_path)
+    assert "REPORT_STEP,SEQUENCE_INDEX,KEYWORD,OCCURRENCE_INDEX" in (
+        keyword_csv_path.read_text(encoding="utf-8")
+    )
+
+    csv_path = tmp_path / "restart_timeline.csv"
+    dataset.to_csv(csv_path)
+    assert "REPORT_STEP,SEQUENCE_INDEX,SIMULATION_DAYS,DATE,SOURCE" in (
+        csv_path.read_text(encoding="utf-8")
+    )
+    selected = dataset.select_report_steps([2])
+    assert selected.report_steps() == (2,)
 
 
 def test_restart_dataset_queries_and_grid_property_mapping(tmp_path: Path) -> None:
@@ -93,9 +116,13 @@ def test_restart_dataset_queries_and_grid_property_mapping(tmp_path: Path) -> No
     report = dataset.report_by_index(0)
     pressure = report.property("PRESSURE")
     active_pressure = report.property("ACTIVEPRESS")
+    pressure_collection = report.properties(["PRESSURE"])
 
     assert dataset.report_by_simulation_days(30.0) is report
     assert dataset.report_by_date(date(2026, 2, 1)) is report
+    assert report.keyword_names() == ("PRESSURE", "ACTIVEPRESS")
+    assert report.has_keyword("pressure")
+    assert pressure_collection.names() == ("PRESSURE",)
     assert pressure.to_active_array() == (1000,)
     assert pressure.value_at(CellIndex.ijk(1, 0, 0)) == 2000
     assert active_pressure.to_global_array(default_value=0) == (700, 0)
@@ -131,6 +158,52 @@ def test_public_case_groups_formatted_non_unified_restarts(tmp_path: Path) -> No
     assert dataset.unified is False
     assert dataset.report_steps() == (1, 2)
     assert dataset.report_by_step(2).property("PRESSURE").values == (200,)
+
+
+def test_public_restart_facade_loads_explicit_unified_path(tmp_path: Path) -> None:
+    path = tmp_path / "explicit_restart.txt"
+    path.write_text(
+        """
+        REPORT 1 1.0 '2026-01-01' /
+        PRESSURE 10 /
+        REPORT 2 2.0 '2026-01-02' /
+        PRESSURE 20 /
+        """,
+        encoding="utf-8",
+    )
+
+    dataset = load_restarts_from_paths((path,))
+
+    assert dataset.unified is True
+    assert dataset.report_steps() == (1, 2)
+    assert dataset.report_by_step(2).property("PRESSURE").values == (20,)
+
+
+def test_public_restart_facade_loads_explicit_non_unified_paths(
+    tmp_path: Path,
+) -> None:
+    first_path = tmp_path / "first_restart.txt"
+    second_path = tmp_path / "second_restart.txt"
+    first_path.write_text("PRESSURE 100 /", encoding="utf-8")
+    second_path.write_text("PRESSURE 200 /", encoding="utf-8")
+
+    dataset = load_restarts_from_paths(
+        (first_path, second_path),
+        report_steps=(1, 2),
+        options=RestartLoadOptions(requested_report_steps=(2,)),
+    )
+
+    assert dataset.unified is False
+    assert dataset.report_steps() == (2,)
+    assert dataset.report_by_step(2).property("PRESSURE").values == (200,)
+
+
+def test_explicit_restart_paths_validate_report_step_count(tmp_path: Path) -> None:
+    path = tmp_path / "restart.txt"
+    path.write_text("PRESSURE 1 /", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="report_steps"):
+        load_restarts_from_paths((path,), report_steps=(1, 2))
 
 
 def test_formatted_restart_reader_reports_corrupt_blocks(tmp_path: Path) -> None:

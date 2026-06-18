@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import csv
 from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import Path
 
 from reservoir_data.domain.keyword.keyword_record import KeywordRecord
 from reservoir_data.domain.keyword.keyword_type import KeywordType
@@ -34,6 +36,57 @@ class KeywordDataset:
         """Return record names in original order."""
 
         return tuple(record.name for record in self.records)
+
+    def unique_names(self) -> tuple[str, ...]:
+        """Return keyword names in first-occurrence order."""
+
+        return tuple(dict.fromkeys(self.names()))
+
+    def keyword_count(self, name: str | None = None) -> int:
+        """Return total record count or count for one keyword."""
+
+        if name is None:
+            return len(self.records)
+        normalized = name.strip().upper()
+        if not normalized:
+            raise ValueError("keyword name must not be empty")
+        return sum(1 for record in self.records if record.name == normalized)
+
+    def rows(self) -> tuple[dict[str, object], ...]:
+        """Return keyword metadata rows without expanding values."""
+
+        occurrence_counts: dict[str, int] = {}
+        rows: list[dict[str, object]] = []
+        for index, record in enumerate(self.records):
+            occurrence_index = occurrence_counts.get(record.name, 0)
+            occurrence_counts[record.name] = occurrence_index + 1
+            rows.append(
+                {
+                    "INDEX": index,
+                    "KEYWORD": record.name,
+                    "OCCURRENCE_INDEX": occurrence_index,
+                    "TYPE": record.keyword_type.value,
+                    "VALUE_COUNT": record.element_count,
+                    "SOURCE": record.source or self.source,
+                }
+            )
+        return tuple(rows)
+
+    def to_csv(self, path: str | Path) -> None:
+        """Write keyword metadata rows to CSV."""
+
+        fieldnames = [
+            "INDEX",
+            "KEYWORD",
+            "OCCURRENCE_INDEX",
+            "TYPE",
+            "VALUE_COUNT",
+            "SOURCE",
+        ]
+        with Path(path).open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(stream, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self.rows())
 
     def has_keyword(
         self,
@@ -118,6 +171,45 @@ class KeywordDataset:
             source=self.source,
         )
 
+    def block(
+        self,
+        start_name: str,
+        end_name: str | None = None,
+        start_occurrence_index: int = 0,
+        end_occurrence_index: int = 0,
+        include_boundaries: bool = True,
+        case_sensitivity: CaseSensitivity = CaseSensitivity.INSENSITIVE,
+    ) -> "KeywordDataset":
+        """Return a contiguous block of keyword records.
+
+        The start keyword is required. When `end_name` is omitted, the block
+        extends to the end of the dataset.
+        """
+
+        if start_occurrence_index < 0:
+            raise ValueError("start_occurrence_index must be non-negative")
+        if end_occurrence_index < 0:
+            raise ValueError("end_occurrence_index must be non-negative")
+
+        start_index = self._record_index(
+            start_name,
+            start_occurrence_index,
+            case_sensitivity,
+        )
+        end_index = len(self.records) - 1
+        if end_name is not None:
+            end_index = self._record_index(
+                end_name,
+                end_occurrence_index,
+                case_sensitivity,
+            )
+            if end_index < start_index:
+                raise ValueError("end keyword occurs before start keyword")
+
+        left = start_index if include_boundaries else start_index + 1
+        right = end_index + 1 if include_boundaries else end_index
+        return KeywordDataset(records=self.records[left:right], source=self.source)
+
     def _validate(
         self,
         record: KeywordRecord,
@@ -137,3 +229,20 @@ class KeywordDataset:
         if normalized_policy is CaseSensitivity.SENSITIVE:
             return left == right
         return left.casefold() == right.casefold()
+
+    def _record_index(
+        self,
+        name: str,
+        occurrence_index: int,
+        case_sensitivity: CaseSensitivity,
+    ) -> int:
+        seen = 0
+        for index, record in enumerate(self.records):
+            if not self._names_match(record.name, name, case_sensitivity):
+                continue
+            if seen == occurrence_index:
+                return index
+            seen += 1
+        raise MissingKeywordError(
+            f"Keyword {name!r} occurrence {occurrence_index} was not found"
+        )

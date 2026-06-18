@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from reservoir_data.domain.format.file_format import FileCategory
@@ -6,6 +7,7 @@ from reservoir_data.formats.summary.formatted_summary_reader import (
     FormattedSummaryReader,
 )
 from reservoir_data.infrastructure.caching.json_index_cache import JsonIndexCache
+from reservoir_data.infrastructure.caching.source_fingerprint import SourceFingerprint
 from reservoir_data.public.case_facade import SimulationCase
 from reservoir_data.schemas.detection import FormatDetectionResult
 from reservoir_data.schemas.loading import CachePolicy, LoadCaseOptions
@@ -68,8 +70,12 @@ def test_public_case_lazy_properties_load_only_when_requested(tmp_path: Path) ->
     properties = case.load_properties(names=["PORO", "PRESSURE"])
 
     assert properties.names() == ("PORO", "PRESSURE")
+    assert properties.has_property("pressure")
     assert not properties.is_property_loaded("PORO")
     assert not properties.is_property_loaded("PRESSURE")
+    metadata_rows = properties.metadata_rows()
+    assert metadata_rows[0]["PROPERTY"] == "PORO"
+    assert metadata_rows[0]["LOADED"] is False
 
     poro = properties.property("PORO")
 
@@ -77,6 +83,31 @@ def test_public_case_lazy_properties_load_only_when_requested(tmp_path: Path) ->
     assert properties.is_property_loaded("PORO")
     assert not properties.is_property_loaded("PRESSURE")
     assert poro.to_global_array(default_value=0.0) == (0.25, 0.0)
+    metadata_csv_path = tmp_path / "properties.csv"
+    properties.metadata_to_csv(metadata_csv_path)
+    assert "INDEX,PROPERTY,LOADED,LAYOUT,VALUE_COUNT,UNIT,SOURCE" in (
+        metadata_csv_path.read_text(encoding="utf-8")
+    )
+
+
+def test_lazy_property_collection_selection_preserves_lazy_loaders(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "CASE.FINIT"
+    path.write_text("PORO 0.25 / PRESSURE 100 200 /", encoding="utf-8")
+    properties = InitReader().read(
+        path,
+        names=("PORO", "PRESSURE"),
+        lazy=True,
+    )
+
+    selected = properties.select(["PRESSURE"])
+
+    assert selected.names() == ("PRESSURE",)
+    assert selected.has_property("PRESSURE")
+    assert not selected.is_property_loaded("PRESSURE")
+    assert selected.property("PRESSURE").values == (100, 200)
+    assert selected.is_property_loaded("PRESSURE")
 
 
 def test_lazy_init_property_results_match_eager_results(tmp_path: Path) -> None:
@@ -130,6 +161,43 @@ def test_summary_index_cache_hits_and_invalidates_by_source_identity(
     assert invalidated_cache.misses == 1
     assert invalidated_cache.writes == 1
     assert changed.vector("FOPR").values == (10.0, 25.0)
+
+
+def test_source_fingerprint_can_include_stronger_sha256_checksum(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "source.txt"
+    path.write_text("abc", encoding="utf-8")
+
+    weak = SourceFingerprint.from_path(path)
+    strong = SourceFingerprint.from_path(path, include_checksum=True)
+    restored = SourceFingerprint.from_json(strong.to_json())
+
+    assert weak.sha256 is None
+    assert strong.sha256 == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    assert restored == strong
+
+
+def test_json_index_cache_can_persist_checksum_fingerprints(tmp_path: Path) -> None:
+    source = tmp_path / "source.txt"
+    cache_dir = tmp_path / ".reservoir_data_cache"
+    source.write_text("payload", encoding="utf-8")
+
+    cache = JsonIndexCache(cache_dir=cache_dir, writable=True, checksum_sources=True)
+    cache.save("test", "case", (source,), {"ok": True})
+    cache_file = next(cache_dir.glob("*.json"))
+    envelope = json.loads(cache_file.read_text(encoding="utf-8"))
+
+    reloaded_cache = JsonIndexCache(
+        cache_dir=cache_dir,
+        writable=True,
+        checksum_sources=True,
+    )
+    payload = reloaded_cache.load("test", "case", (source,))
+
+    assert envelope["sources"][0]["sha256"]
+    assert payload == {"ok": True}
+    assert reloaded_cache.hits == 1
 
 
 def test_public_summary_cache_policy_creates_optional_index(tmp_path: Path) -> None:

@@ -2,8 +2,9 @@
 
 ## Current Milestone
 
-M14: Public Facade Module Surface is complete for the scoped import-boundary
-behavior. There is no remaining unblocked milestone in the current roadmap.
+M58: Grid Geometry Depth Rows is complete for the scoped lightweight
+ZCORN-derived geometry-row behavior. M39 through M58 are complete and ready for
+testing.
 
 ## Completed Work
 
@@ -95,7 +96,7 @@ behavior. There is no remaining unblocked milestone in the current roadmap.
   `SummaryDataset` implemented for formatted summary metadata, time axes, vector
   lookup, filtering, exact time lookup, and lazy value loading.
 - `SummaryVector` implements first/last value access, report-step lookup,
-  generic linear interpolation, fixed-day resampling, and an optional NumPy
+  generic interpolation, fixed-day resampling, and an optional NumPy
   export boundary.
 - `SummaryDataset` implements wildcard/qualifier filtering, optional NumPy and
   pandas export boundaries, and CSV export with the standard library.
@@ -202,17 +203,176 @@ behavior. There is no remaining unblocked milestone in the current roadmap.
   objects and relevant option/query/export DTOs alongside `SimulationCase`.
 - Focused M14 tests added to validate facade imports, exported option DTO
   construction, and identity with implemented domain/schema classes.
+- `UnitSystem` and `Phase` value objects added under `domain.units` with
+  normalization helpers and public facade exports.
+- `ReservoirGrid` and `PropertyExportOptions` now normalize optional unit-system
+  metadata without performing unsupported unit conversion.
+- Focused M15 tests added for unit/phase normalization, public units facade
+  imports, grid unit metadata, and export option normalization.
+- `ReportStepMatchPolicy` added to `ReportStepQuery`, preserving exact matching
+  by default and enabling explicit nearest matching.
+- `RestartDataset`, `SummaryDataset`, and `WellTimeline` now support typed query
+  behavior with exact and nearest report step, simulation-day, and date matching.
+- Focused M16 tests added for exact/nearest restart, summary, and well timeline
+  queries and public match-policy exports.
+- `DeckMetadata`, `FormattedDeckReader`, `DeckService`, and public
+  `SimulationCase.load_deck_metadata()` implemented for scoped `.DATA` deck
+  metadata extraction.
+- Deck metadata loading now extracts supported `TITLE`, `START`, keyword names,
+  and source path from formatted GRDECL-style deck text.
+- Focused M17 tests added for deck metadata extraction, ISO and day/month/year
+  start dates, public case loading, and malformed `START` errors.
+- `ExportService` now exposes optional pandas DataFrame boundaries for grid cell
+  rows, one property, and selected property collections.
+- `SimulationCase.grid_cell_dataframe()` and `properties_dataframe()` added as
+  optional pandas public workflows.
+- Focused M18 tests added for service and public case DataFrame boundaries that
+  pass whether pandas is installed or absent.
+- `SummaryInterpolationMethod` added with `linear` and `stepwise` generic
+  interpolation/resampling behavior for `SummaryVector`.
+- Focused M19 tests added for linear default behavior, stepwise interpolation,
+  stepwise resampling, invalid methods, out-of-range days, and public facade
+  exports.
+- `SourceFingerprint` now supports opt-in SHA-256 checksums, and
+  `JsonIndexCache` can persist and validate checksum source fingerprints when
+  `checksum_sources=True`.
+- Focused M20 tests added for checksum fingerprints, JSON round-trip, and
+  checksum-backed cache envelope reuse.
+- `LoadCaseOptions.sniff_payload_format` added for opt-in payload format
+  sniffing during discovery.
+- `FileDetector.detect(...)` can now sniff obvious formatted text versus
+  binary-looking payloads, apply explicit formatted overrides for ambiguous
+  files, and report conflicts as detection errors.
+- `FormattedKeywordReader` now rejects explicit unformatted expectations.
+- Focused M21 tests added for payload sniffing, override contracts, discovery
+  wiring, and formatted-reader mismatch behavior.
+- `KeywordDataset.block(...)` added for occurrence-aware contiguous keyword
+  block extraction.
+- Focused M22 tests added for keyword block slicing, boundary handling,
+  occurrence indexes, source preservation, and errors.
+- `GridCell.corner_depths` and `property_value(...)` added for stored ZCORN
+  corner-depth access and compatible property evaluation.
+- Focused M23 grid-domain tests added for corner depths and property values.
+- `SummaryService.load_summary_from_paths(...)` and public
+  `load_summary_from_paths(...)` added for explicit formatted summary
+  metadata/data paths, including report-step hints for non-unified files.
+- Focused M24 summary tests added for explicit unified and non-unified path
+  loading and report-step count validation.
+- `RestartService.load_restarts_from_paths(...)` and public
+  `load_restarts_from_paths(...)` added for explicit formatted restart paths,
+  including report-step hints for non-unified files.
+- Focused M25 restart tests added for explicit unified/non-unified paths,
+  requested-report filtering, and report-step count validation.
+- `PropertyCollection.has_property(...)` now recognizes lazy properties, and
+  `select(...)` preserves lazy property loaders.
+- Focused M26 tests added for lazy property selection and lazy name visibility.
+- `WellDataset` now supports case-insensitive existence checks, wildcard name
+  filtering, and selected timeline datasets.
+- Focused M27 tests added in the formatted well workflow.
+- `RftDataset` now exposes record types, filtered record lists, and selected
+  sub-datasets by well/date/type without loading measurements.
+- Focused M28 tests added in the formatted RFT/PLT workflow.
+- `GridPropertyService.load_grid_from_path(...)`,
+  `load_properties_from_path(...)`, and public grid/property facade helpers now
+  load supported formatted grid and INIT/property files from explicit paths.
+- Focused M29 tests added for explicit grid/INIT path loading and public root
+  facade exports.
+- `SummaryDataset.rows(...)` added as the public row API used by summary CSV and
+  optional pandas export.
+- Focused M30 assertions added for summary row schemas.
+- `RestartDataset.timeline_rows()` and `to_csv(...)` added for restart report
+  metadata timelines without loading keyword payloads.
+- Focused M31 tests added for restart timeline rows and CSV.
+- `WellDataset.rows()` and `to_csv(...)` added for flattened well snapshot
+  metadata, counts, and rate columns.
+- Focused M32 tests added for well snapshot rows and CSV.
+- `RftDataset.header_rows()` and `to_csv(...)` added for RFT/PLT record metadata
+  while preserving lazy measurement loading.
+- Focused M33 tests added for RFT/PLT header rows, CSV, and measurement-loaded
+  state.
+- `PropertyCollection.materialize(...)` added for explicit eager materialization
+  of all or selected lazy properties.
+- Focused M34 tests added for selected lazy property materialization.
+- `DeckMetadata.keyword_count(...)` and `unique_keyword_names()` added for
+  syntactic deck keyword occurrence inspection.
+- Focused M35 tests added for duplicate keyword counts and unique-name order.
+- `FormatDetectionResult.format_label`, `diagnostic_summary()`, and
+  `require_formatted(...)` added for reusable detection diagnostics and
+  formatted-only guard checks.
+- Focused M36 tests added for detection diagnostics and formatted requirement
+  errors.
+- `SummaryVector.value_at_time_index(...)`, `value_at_simulation_days(...)`,
+  and `value_at_date(...)` added for exact value lookup over stored axes.
+- Focused M37 assertions added for exact summary vector value lookup.
+- `RestartReport.keyword_names()`, `has_keyword(...)`, and `properties(...)`
+  added for report keyword availability and selected keyword-backed property
+  collections.
+- Focused M38 tests added for restart keyword listing, existence checks, and
+  report property collections.
+- `WellDataset.connection_rows()` and `connections_to_csv(...)` added for
+  supported formatted well connection metadata exports.
+- Focused M39 tests added for connection rows and CSV headers.
+- `WellDataset.segment_rows()` and `segments_to_csv(...)` added for supported
+  formatted well segment metadata exports.
+- Focused M40 tests added for segment rows and CSV headers.
+- `RftRecord.measurement_rows()` and `measurements_to_csv(...)` added for
+  record-level RFT/PLT measurement exports.
+- Focused M41 tests added for record measurement rows.
+- `RftDataset.measurement_rows(...)` and `measurements_to_csv(...)` added for
+  filtered dataset-level RFT/PLT measurement exports.
+- Focused M42 tests added for dataset measurement rows and CSV headers.
+- `SummaryDataset.time_axis_rows()` and `time_axis_to_csv(...)` added for
+  summary time-axis metadata export without loading vectors.
+- Focused M43 tests added for time-axis rows and CSV.
+- `SummaryDataset.vector_metadata_rows()` and `vector_metadata_to_csv(...)`
+  added for summary vector metadata and loaded-state export.
+- Focused M44 tests added for vector metadata rows and CSV.
+- `SummaryVector.rows()`, `to_csv(...)`, and `statistics()` added for
+  per-vector long-form export and basic numeric statistics.
+- Focused M45 summary-vector tests added for rows, CSV, and statistics.
+- `SummaryDataset.select_by_filter(...)` added to combine existing key filtering
+  with lazy dataset selection.
+- Focused M46 tests added for filtered summary dataset selection.
+- `RestartDataset.select_report_steps(...)` added for selecting report subsets
+  after load.
+- Focused M47 tests added for restart report-step selection.
+- `RestartReport.keyword_rows()` and `keywords_to_csv(...)` added for report
+  payload keyword metadata export.
+- Focused M48 tests added for restart keyword rows and CSV.
+- `KeywordDataset.unique_names()` and `keyword_count(...)` added for syntactic
+  keyword occurrence inspection.
+- Focused M49 tests added for keyword counts and unique names.
+- `KeywordDataset.rows()` and `to_csv(...)` added for keyword metadata row
+  exports.
+- Focused M50 tests added for keyword rows and CSV.
+- `PropertyCollection.metadata_rows()` and `metadata_to_csv(...)` added for
+  property metadata export without forcing lazy property loading.
+- Focused M51 tests added for lazy property metadata rows and CSV.
+- `CaseManifest.file_rows()` and `files_to_csv(...)` added for discovery file
+  rows and CSV export.
+- `FormatDetectionResult.to_row()` added as the per-detection row contract.
+- `SimulationCase.file_rows()` and `files_to_csv(...)` added as public discovery
+  row exports.
+- Focused M52-M54 tests added for detection, manifest, and public case file
+  rows/CSV.
+- `ReservoirGrid.cells()`, `active_cells()`, and `inactive_cells()` added for
+  stable cell iteration.
+- `ReservoirGrid.cell_rows()` added for lightweight domain-level cell metadata
+  rows.
+- `GridGeometry.depth_range()`, `thickness_range()`, and `cell_depth_rows()`
+  added for lightweight ZCORN-derived geometry inspection.
+- Focused M55-M58 grid-domain tests added for cell iteration, cell rows, depth
+  ranges, and geometry depth rows.
 
 ## Work In Progress
 
-- None for M14.
+- None for M58.
 
 ## Next Planned Task
 
-No further unblocked milestone exists in the current roadmap. Remaining work is
-compatibility expansion: binary payload decoding, independently verified vendor
-variants, broader cache/index support, full geometry reconstruction, and
-additional writer/export targets.
+M59: Optional pandas DataFrame boundaries for the newly added summary metadata,
+well connection/segment, RFT measurement, keyword/property metadata, discovery,
+and lightweight grid row helpers, keeping pandas optional and isolated.
 
 ## Blockers
 
@@ -232,7 +392,8 @@ additional writer/export targets.
 - Binary/vendor-specific well and RFT/PLT payload parsing.
 - Broad simulator-format export, binary writers, full deck writing, restart/
   summary rewriting, and broader writer/export targets.
-- Broad cache/index support beyond formatted summary indexes.
+- Broad cache/index support beyond formatted summary indexes and opt-in
+  checksum fingerprints.
 - Independent verification topics listed in the roadmap.
 
 ## Validation Commands Run
@@ -289,12 +450,63 @@ additional writer/export targets.
 - `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 88 passed and
   1 skipped in 1.01s after M14. The skipped test remains the optional NumPy array
   conversion path because NumPy is not installed in this environment.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_units_phase.py tests/test_public_facades.py`
+  succeeded: 7 passed in 0.62s during M15 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_report_queries.py tests/test_restart_reader.py tests/test_summary_reader.py tests/test_well_rft_reader.py tests/test_public_facades.py`
+  succeeded: 23 passed in 0.72s during M16 validation after correcting a test
+  fixture constructor.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_deck_metadata.py tests/test_file_detection.py tests/test_case_discovery.py`
+  succeeded: 28 passed in 0.64s during M17 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_export_service.py tests/test_public_facades.py`
+  succeeded: 10 passed in 0.45s during M18 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_summary_resampling.py tests/test_summary_reader.py tests/test_public_facades.py`
+  succeeded: 11 passed in 0.51s during M19 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_lazy_cache_hardening.py`
+  succeeded: 6 passed in 0.55s during M20 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 108 passed and
+  1 skipped in 1.30s after M20. The skipped test remains the optional NumPy
+  array conversion path because NumPy is not installed in this environment.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_payload_format_contracts.py tests/test_file_detection.py tests/test_case_discovery.py tests/test_formatted_keyword_reader.py`
+  succeeded: 32 passed in 0.54s during M21 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_keyword_dataset.py`
+  succeeded: 5 passed in 0.17s during M22 validation after correcting the
+  occurrence-index expectation in the new test.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_grid_domain.py`
+  succeeded: 6 passed and 1 skipped in 0.22s during M23 validation after
+  making test property layouts explicit.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_summary_reader.py tests/test_public_facades.py`
+  succeeded: 10 passed in 0.44s during M24 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_restart_reader.py tests/test_public_facades.py`
+  succeeded: 11 passed in 0.47s during M25 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_lazy_cache_hardening.py tests/test_grid_init_readers.py`
+  succeeded: 12 passed in 0.44s during M26 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_well_rft_reader.py`
+  succeeded: 7 passed in 0.34s during M27 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_well_rft_reader.py`
+  succeeded: 7 passed in 0.30s during M28 validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 123 passed and
+  1 skipped in 1.28s after M28. The skipped test remains the optional NumPy
+  array conversion path because NumPy is not installed in this environment.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_grid_init_readers.py tests/test_summary_reader.py tests/test_restart_reader.py tests/test_well_rft_reader.py tests/test_deck_metadata.py tests/test_payload_format_contracts.py tests/test_summary_resampling.py`
+  succeeded: 46 passed in 1.18s during M29-M38 focused validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 127 passed and
+  1 skipped in 1.53s after M38. The skipped test remains the optional NumPy
+  array conversion path because NumPy is not installed in this environment.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_well_rft_reader.py tests/test_summary_reader.py tests/test_restart_reader.py tests/test_keyword_dataset.py tests/test_lazy_cache_hardening.py tests/test_file_detection.py tests/test_case_discovery.py tests/test_grid_domain.py`
+  failed initially: 1 failed, 66 passed, 1 skipped because a test expected a
+  field summary vector to carry a qualifier kind.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest tests/test_well_rft_reader.py tests/test_summary_reader.py tests/test_restart_reader.py tests/test_keyword_dataset.py tests/test_lazy_cache_hardening.py tests/test_file_detection.py tests/test_case_discovery.py tests/test_grid_domain.py`
+  succeeded: 67 passed and 1 skipped in 1.04s during M39-M58 focused validation.
+- `$env:PYTHONDONTWRITEBYTECODE='1'; python -m pytest` succeeded: 128 passed and
+  1 skipped in 1.56s after M58. The skipped test remains the optional NumPy
+  array conversion path because NumPy is not installed in this environment.
 
 ## Known Limitations
 
 - Only GRDECL text keyword payloads are parsed.
-- Discovery will be filename-based until format readers and binary/text sniffing
-  are implemented.
+- Discovery is filename-based by default. Opt-in payload sniffing can refine
+  obvious formatted text versus binary-looking files but does not decode
+  simulator-specific binary payloads.
 - Exact formatted and non-unified extension conventions are conservative and
   require independent verification before being advertised as complete support.
 - Public loaders are supported only for the scoped formatted keyword variants
@@ -340,10 +552,12 @@ additional writer/export targets.
   requires `TIME`, `DATES`, and `VALUES` records; unified data also requires
   `REPORTS`, while formatted non-unified files may derive a single report step
   from the detected filename.
-- Summary vector resampling uses generic linear interpolation by simulation day.
-  Simulator-specific rate/cumulative resampling rules remain deferred.
-- pandas and NumPy are optional. Summary export methods raise explicit
-  `UnsupportedFormatError` messages when the optional dependency is absent.
+- Summary vector resampling supports generic linear and stepwise interpolation
+  by simulation day. Simulator-specific rate/cumulative resampling rules remain
+  deferred.
+- pandas and NumPy are optional. Summary and grid/property DataFrame export
+  methods raise explicit `UnsupportedFormatError` messages when the optional
+  dependency is absent.
 - Well timeline support is limited to formatted restart payload fixtures with
   `WELL`, `WCONN`, `WRATE`, and `WSEG` records. Complete simulator restart well
   extraction, wellhead metadata, connection factors beyond the scoped fields,
@@ -359,8 +573,8 @@ additional writer/export targets.
 - Cache/index support is currently limited to formatted summary metadata/time
   axes/vector keys. Cache files are optional and correctness does not depend on
   them.
-- Cache invalidation uses resolved source path, size, and `mtime_ns`; stronger
-  checksum-based invalidation remains future hardening.
+- Cache invalidation uses resolved source path, size, and `mtime_ns` by default;
+  opt-in SHA-256 source checksums are available for stronger cache fingerprints.
 - GRDECL writer support is limited to the text keyword subset supported by the
   current parser. It is validated for supported grid geometry and selected grid
   property exports only.
@@ -372,9 +586,9 @@ additional writer/export targets.
 - Grid cell CSV export uses the existing lightweight geometry metrics derived
   from stored ZCORN values. It does not provide full corner-point XYZ coordinate
   tables, cell volumes, local grids, dual grids, or NNC metadata.
-- Property CSV export is long-form row output for supported loaded properties.
-  It does not yet provide pandas DataFrames, unit conversion, wide pivoted
-  property tables, or simulator-specific table schemas.
+- Property CSV/DataFrame export is long-form row output for supported loaded
+  properties. It does not yet provide unit conversion, wide pivoted property
+  tables, or simulator-specific table schemas.
 - `GridLoadOptions` is a typed public contract, but local grids, NNC metadata,
   coordinate-transform application, lazy geometry arrays, and full corner-point
   validation still raise explicit unsupported errors.
@@ -395,6 +609,55 @@ additional writer/export targets.
 - Public facade modules are import boundaries over implemented domain objects and
   DTOs. They do not add new loader behavior, compatibility aliases for other
   APIs, or public access to low-level parser/binary internals.
+- Unit-system and phase value objects normalize labels only. Unit conversion and
+  phase-specific simulator semantics remain deferred.
+- Deck metadata support is limited to formatted GRDECL-style `.DATA` text and
+  extracts only `TITLE`, `START`, keyword names, and source path. Full deck
+  semantic validation, schedule editing, includes, and broad deck writing remain
+  out of scope.
+- Nearest report/time query behavior breaks ties by earliest sequence/time-axis
+  index and does not infer simulator-specific date/time precision beyond stored
+  `date` values.
+- Explicit summary and restart path-loading helpers assume formatted keyword
+  text. Non-unified explicit paths require caller-provided report-step hints
+  when the files omit report-step metadata.
+- Explicit grid and INIT/property path-loading helpers assume formatted keyword
+  text and reuse the existing validated readers only.
+- Summary, restart, well, and RFT/PLT row/CSV helpers expose scoped metadata or
+  already-supported values only; they do not add simulator-specific table
+  schemas.
+- Restart timeline CSV does not materialize keyword payloads.
+- Well snapshot CSV does not export connection-level or segment-level child
+  rows yet.
+- RFT/PLT header CSV does not export cell measurement rows yet.
+- Property collection materialization is explicit eager loading through the
+  existing lazy loaders; it is not byte-offset streaming or memory mapping.
+- Deck keyword count helpers are syntactic over parsed keyword names and do not
+  infer deck section semantics.
+- Detection diagnostic helpers summarize existing detection state and enforce
+  formatted-only contracts; they do not decode binary payloads.
+- Summary vector day/date lookup helpers require exact stored axis values.
+- Restart report property collections wrap selected keywords as properties and
+  do not add restart payload table export.
+- Well connection and segment row exports flatten existing scoped formatted well
+  objects only; they do not add new restart well record semantics.
+- RFT/PLT measurement rows intentionally materialize matching lazy measurements
+  and do not add measurement indexes or binary decoding.
+- Summary time-axis and vector metadata rows expose stored formatted summary
+  metadata only; complete vector-classification guarantees remain deferred.
+- Restart keyword metadata rows intentionally load the selected report payload
+  and do not export full keyword values.
+- Keyword and property metadata CSV exports are metadata-only; property metadata
+  rows do not force lazy property loading.
+- Manifest and public case file rows expose discovery metadata only and do not
+  parse payloads.
+- Grid cell iteration and cell/depth rows use the existing lightweight
+  ZCORN-derived geometry metrics and do not expose full XYZ corners, volumes,
+  spatial lookup, local grids, dual grids, or NNC metadata.
+- Keyword block extraction is syntactic and does not validate deck section
+  semantics.
+- Grid cell corner access exposes stored ZCORN depths only; full XYZ corners and
+  volume calculations remain unsupported.
 
 ## Assumptions
 
@@ -446,3 +709,73 @@ additional writer/export targets.
 - M14 treats the public facade modules as stable import boundaries only. Actual
   workflow support remains limited to the implemented `SimulationCase` methods
   and scoped formatted readers.
+- M15 treats unit systems and phases as normalized metadata labels only; no unit
+  conversion or phase-dependent interpretation is inferred.
+- M16 treats nearest report/time matching as a generic absolute-distance policy
+  over stored report steps, simulation days, or report dates.
+- M17 treats `.DATA` decks as formatted keyword text and extracts only metadata
+  that can be validated without full deck semantic interpretation.
+- M18 treats pandas DataFrame export as an optional boundary over the same row
+  schema already validated for grid/property CSV export.
+- M19 treats linear and stepwise summary interpolation as generic numeric
+  methods until simulator-specific rate/cumulative rules are independently
+  verified.
+- M20 keeps path/size/mtime cache invalidation as the default fast contract and
+  makes SHA-256 checksums explicit opt-in hardening.
+- M21 keeps payload sniffing opt-in because discovery should remain cheap and
+  because sniffing only detects obvious text/binary-looking payloads.
+- M22 treats keyword blocks as ordered syntactic slices, not semantic deck
+  sections.
+- M23 exposes stored ZCORN corner depths and property delegation while keeping
+  full corner-point geometry out of scope.
+- M24 treats explicit summary paths as formatted keyword text and uses
+  caller-provided report-step hints for non-unified data without `REPORTS`.
+- M25 treats explicit restart paths as formatted keyword text and uses
+  caller-provided report-step hints for non-unified files without `REPORT`.
+- M26 preserves lazy property loaders when selecting property subsets.
+- M27 keeps well filtering at the dataset/timeline name layer and does not add
+  new restart well record semantics.
+- M28 filters RFT/PLT record headers only and does not materialize measurement
+  payloads during selection.
+- M29 treats explicit grid/INIT paths as formatted keyword text and does not
+  infer arbitrary multi-file case context from those paths.
+- M30 treats summary rows as the same row schema used by summary CSV/pandas
+  export.
+- M31 treats restart timeline export as report metadata only.
+- M32 treats well rows as snapshot-level exports with discovered rate columns.
+- M33 treats RFT/PLT rows as record-header exports and keeps measurements lazy.
+- M34 treats property materialization as an explicit conversion from lazy
+  loaders to an eager collection.
+- M35 treats deck keyword counts as syntactic occurrence counts.
+- M36 treats detection diagnostics as convenience helpers over existing
+  detection state, not stronger payload compatibility guarantees.
+- M37 treats summary vector date/day lookup as exact matching over stored axes.
+- M38 treats restart report property collections as keyword-backed convenience
+  wrappers, not a new restart table/export subsystem.
+- M39 treats well connection rows as flattened existing `WellConnection`
+  objects, not a broader restart well parser.
+- M40 treats well segment rows as flattened existing `WellSegment` objects and
+  does not infer full segment topology.
+- M41 treats RFT record measurement rows as an explicit payload materialization
+  operation.
+- M42 treats RFT dataset measurement rows as filtered aggregation over record
+  measurement rows.
+- M43 treats summary time-axis rows as stored date/report-step/day metadata.
+- M44 treats summary vector metadata rows as stored metadata and loaded-state
+  diagnostics.
+- M45 treats summary vector rows as long-form exports for one vector.
+- M46 treats summary filtered selection as a wrapper around existing key filters.
+- M47 treats restart report-step selection as an in-memory subset operation.
+- M48 treats restart keyword metadata rows as a report-payload inspection helper.
+- M49 treats keyword counts as syntactic occurrence counts.
+- M50 treats keyword dataset rows as metadata-only rows.
+- M51 treats property metadata rows as lazy-state diagnostics.
+- M52 treats manifest file rows as discovery diagnostics.
+- M53 treats detection result rows as a stable tabular representation of
+  existing detection state.
+- M54 treats public case file rows as manifest rows exposed through the case
+  facade.
+- M55 treats grid cell iteration as materialized lightweight cell views.
+- M56 treats grid cell rows as lightweight domain rows, not full geometry tables.
+- M57 treats depth and thickness ranges as ZCORN-derived metrics.
+- M58 treats geometry depth rows as top/bottom/depth/thickness summaries only.

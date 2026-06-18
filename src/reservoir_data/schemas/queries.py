@@ -16,6 +16,13 @@ class CaseSensitivity(StrEnum):
     SENSITIVE = "sensitive"
 
 
+class ReportStepMatchPolicy(StrEnum):
+    """Matching policy for time/report-step queries."""
+
+    EXACT = "exact"
+    NEAREST = "nearest"
+
+
 @dataclass(frozen=True, slots=True)
 class KeywordQuery:
     """Typed contract for retrieving a keyword record."""
@@ -52,6 +59,7 @@ class ReportStepQuery:
     simulation_days: float | None = None
     report_date: date | None = None
     sequence_index: int | None = None
+    match_policy: ReportStepMatchPolicy = ReportStepMatchPolicy.EXACT
 
     def __post_init__(self) -> None:
         provided = sum(
@@ -69,3 +77,8 @@ class ReportStepQuery:
             raise ValueError("report_step must be non-negative")
         if self.sequence_index is not None and self.sequence_index < 0:
             raise ValueError("sequence_index must be non-negative")
+        object.__setattr__(
+            self,
+            "match_policy",
+            ReportStepMatchPolicy(self.match_policy),
+        )

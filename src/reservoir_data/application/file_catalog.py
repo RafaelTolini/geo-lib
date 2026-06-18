@@ -33,7 +33,10 @@ class FileCatalog:
             return self._discover_directory(requested, resolved_options)
 
         if requested.exists() and requested.is_file():
-            explicit_detection = self.detector.detect(requested)
+            explicit_detection = self.detector.detect(
+                requested,
+                sniff_payload=resolved_options.sniff_payload_format,
+            )
             base_name = requested.stem
             root_path = requested.parent
             detections = self._discover_for_basename(
@@ -133,7 +136,10 @@ class FileCatalog:
             if not path.is_file():
                 continue
             try:
-                detection = self.detector.detect(path)
+                detection = self.detector.detect(
+                    path,
+                    sniff_payload=options.sniff_payload_format,
+                )
             except FileDetectionError:
                 continue
             if self._is_allowed(detection, options):

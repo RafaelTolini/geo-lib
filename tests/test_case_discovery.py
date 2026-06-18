@@ -48,6 +48,14 @@ def test_simulation_case_open_discovers_files_by_basename(tmp_path: Path) -> Non
         "CASE.X0007",
     ]
     assert case.manifest.preferred_file(FileCategory.RESTART).path.name == "CASE.UNRST"
+    file_rows = case.file_rows()
+    assert any(row["FILE_NAME"] == "CASE.DATA" for row in file_rows)
+    assert any(row["CATEGORY"] == FileCategory.RESTART.value for row in file_rows)
+    csv_path = tmp_path / "case_files.csv"
+    case.files_to_csv(csv_path)
+    assert "PATH,FILE_NAME,CATEGORY,FORMAT,FORMATTED" in csv_path.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_simulation_case_open_respects_category_filter(tmp_path: Path) -> None:

@@ -5,6 +5,7 @@ from reservoir_data.domain.grid.cell_index import CellIndex
 from reservoir_data.domain.grid.grid_dimensions import GridDimensions
 from reservoir_data.domain.grid.grid_geometry import GridGeometry
 from reservoir_data.domain.grid.reservoir_grid import ReservoirGrid
+from reservoir_data.domain.property.grid_property import GridProperty, PropertyLayout
 from reservoir_data.exceptions.errors import (
     GridGeometryError,
     InvalidCellIndexError,
@@ -112,13 +113,55 @@ def test_reservoir_grid_resolves_cells_and_geometry_values() -> None:
     assert active.bottom == 125.0
     assert active.depth == 122.5
     assert active.thickness == 5.0
+    assert active.corner_depths == (120.0, 120.0, 120.0, 120.0, 125.0, 125.0, 125.0, 125.0)
     assert active.center == (0.5, 1.5, 122.5)
+    assert tuple(cell.global_index for cell in grid.cells()) == (0, 1, 2, 3)
+    assert tuple(cell.global_index for cell in grid.active_cells()) == (0, 2, 3)
+    assert tuple(cell.global_index for cell in grid.inactive_cells()) == (1,)
+    assert grid.cell_rows()[2]["DEPTH"] == 122.5
+    assert grid.geometry.depth_range() == (100.0, 135.0)
+    assert grid.geometry.thickness_range() == (5.0, 5.0)
+    assert grid.geometry.cell_depth_rows()[0] == {
+        "GLOBAL_INDEX": 0,
+        "TOP": 100.0,
+        "BOTTOM": 105.0,
+        "DEPTH": 102.5,
+        "THICKNESS": 5.0,
+    }
 
     with pytest.raises(InvalidCellIndexError):
         grid.cell(CellIndex.global_cell(4))
 
     with pytest.raises(GridGeometryError):
         active.volume
+
+
+def test_grid_cell_evaluates_compatible_grid_property() -> None:
+    dimensions = GridDimensions(nx=2, ny=1, nz=1)
+    grid = ReservoirGrid(
+        dimensions=dimensions,
+        geometry=_geometry(dimensions),
+        active_cell_map=ActiveCellMap.from_activity_values([1, 0], 2),
+    )
+    global_property = GridProperty(
+        "PRESSURE",
+        (100, 200),
+        layout=PropertyLayout.GLOBAL,
+        grid=grid,
+    )
+    active_property = GridProperty(
+        "PORO",
+        (0.25,),
+        layout=PropertyLayout.ACTIVE,
+        grid=grid,
+    )
+
+    active_cell = grid.cell(CellIndex.ijk(0, 0, 0))
+    inactive_cell = grid.cell(CellIndex.ijk(1, 0, 0))
+
+    assert active_cell.property_value(global_property) == 100
+    assert inactive_cell.property_value(global_property) == 200
+    assert active_cell.property_value(active_property) == 0.25
 
 
 def test_grid_geometry_validates_array_lengths() -> None:

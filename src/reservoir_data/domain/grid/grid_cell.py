@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from reservoir_data.domain.grid.cell_index import CellIndex
+from reservoir_data.domain.keyword.keyword_record import KeywordValue
 from reservoir_data.exceptions.errors import GridGeometryError
 
 if TYPE_CHECKING:
+    from reservoir_data.domain.property.grid_property import GridProperty
     from reservoir_data.domain.grid.reservoir_grid import ReservoirGrid
 
 
@@ -77,10 +79,21 @@ class GridCell:
         return self.grid.geometry.cell_thickness(self.global_index)
 
     @property
+    def corner_depths(self) -> tuple[float, ...]:
+        """Return the eight stored ZCORN depths for this cell."""
+
+        return self.grid.geometry.cell_corner_depths(self.global_index)
+
+    @property
     def center(self) -> tuple[float, float, float]:
         """Return a logical IJK center with depth from geometry."""
 
         return self.i + 0.5, self.j + 0.5, self.depth
+
+    def property_value(self, property_: "GridProperty") -> KeywordValue:
+        """Return a compatible grid property's value at this cell."""
+
+        return property_.value_at(CellIndex.global_cell(self.global_index))
 
     @property
     def volume(self) -> float:

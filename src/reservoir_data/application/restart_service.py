@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from reservoir_data.domain.case.case_manifest import CaseManifest
 from reservoir_data.domain.format.file_format import FileCategory
@@ -42,6 +44,47 @@ class RestartService:
         resolved_options = options or RestartLoadOptions()
         self._validate_restart_options(resolved_options)
         detections = self._select_supported_detections(manifest, preference)
+        return self._dataset_from_detections(detections, grid, resolved_options)
+
+    def load_restarts_from_paths(
+        self,
+        paths: Iterable[str | Path],
+        report_steps: Iterable[int] | None = None,
+        grid: ReservoirGrid | None = None,
+        options: RestartLoadOptions | None = None,
+    ) -> RestartDataset:
+        """Load formatted restart data from explicit paths."""
+
+        resolved_options = options or RestartLoadOptions()
+        self._validate_restart_options(resolved_options)
+        restart_paths = tuple(Path(path) for path in paths)
+        if not restart_paths:
+            raise FileReadError("No restart paths were provided")
+
+        steps = None if report_steps is None else tuple(int(step) for step in report_steps)
+        if steps is not None and len(steps) != len(restart_paths):
+            raise ValueError("report_steps must match the number of restart paths")
+
+        detections = tuple(
+            FormatDetectionResult(
+                path=path,
+                file_category=FileCategory.RESTART,
+                formatted=True,
+                unified=steps is None,
+                report_step=None if steps is None else steps[index],
+                confidence=1.0,
+                diagnostics=("Explicit restart path.",),
+            )
+            for index, path in enumerate(restart_paths)
+        )
+        return self._dataset_from_detections(detections, grid, resolved_options)
+
+    def _dataset_from_detections(
+        self,
+        detections: tuple[FormatDetectionResult, ...],
+        grid: ReservoirGrid | None,
+        options: RestartLoadOptions,
+    ) -> RestartDataset:
         datasets = tuple(
             self.restart_reader.read(detection.path, detection=detection)
             for detection in detections
@@ -67,13 +110,10 @@ class RestartService:
             unified=unified,
             grid=grid,
         )
-        dataset = self._filter_report_steps(
-            dataset,
-            resolved_options.requested_report_steps,
-        )
+        dataset = self._filter_report_steps(dataset, options.requested_report_steps)
         if grid is not None:
             dataset = dataset.with_grid(grid)
-        if not resolved_options.header_only and not resolved_options.lazy_keyword_arrays:
+        if not options.header_only and not options.lazy_keyword_arrays:
             for report in dataset.reports:
                 _ = report.keywords
         return dataset

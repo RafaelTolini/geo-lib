@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -42,6 +43,30 @@ class CaseManifest:
         """Return all detected files for a category."""
 
         return tuple(item for item in self.files if item.file_category == category)
+
+    def file_rows(self) -> tuple[dict[str, object], ...]:
+        """Return discovered file rows for diagnostics and export."""
+
+        return tuple(item.to_row() for item in self.files)
+
+    def files_to_csv(self, path: str | Path) -> None:
+        """Write discovered file rows to CSV."""
+
+        fieldnames = [
+            "PATH",
+            "FILE_NAME",
+            "CATEGORY",
+            "FORMAT",
+            "FORMATTED",
+            "UNIFIED",
+            "REPORT_STEP",
+            "CONFIDENCE",
+            "DIAGNOSTICS",
+        ]
+        with Path(path).open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(stream, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self.file_rows())
 
     def preferred_file(
         self,

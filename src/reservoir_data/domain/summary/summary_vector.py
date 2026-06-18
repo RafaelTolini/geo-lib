@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import csv
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
+from enum import StrEnum
+from pathlib import Path
 
 from reservoir_data.domain.summary.summary_key import SummaryKey
 from reservoir_data.exceptions.errors import (
@@ -12,6 +15,13 @@ from reservoir_data.exceptions.errors import (
     SummaryDataError,
     UnsupportedFormatError,
 )
+
+
+class SummaryInterpolationMethod(StrEnum):
+    """Generic summary interpolation/resampling methods."""
+
+    LINEAR = "linear"
+    STEPWISE = "stepwise"
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,14 +80,50 @@ class SummaryVector:
             f"Summary vector {self.name!r} has no report step {report_step}"
         )
 
-    def interpolate_at(self, simulation_day: float) -> float:
-        """Linearly interpolate a value by simulation day.
+    def value_at_time_index(self, time_index: int) -> float:
+        """Return the value at a zero-based time-axis index."""
 
-        This is a generic numeric interpolation rule for the scoped formatted
+        if not 0 <= time_index < len(self.values):
+            raise InvalidReportStepError(
+                f"Summary vector {self.name!r} time index {time_index} "
+                "is outside available range"
+            )
+        return self.values[time_index]
+
+    def value_at_simulation_days(self, simulation_days: float) -> float:
+        """Return the value at an exact simulation day."""
+
+        target = float(simulation_days)
+        for index, candidate in enumerate(self.simulation_days):
+            if candidate == target:
+                return self.values[index]
+        raise InvalidReportStepError(
+            f"Summary vector {self.name!r} has no simulation day {target}"
+        )
+
+    def value_at_date(self, report_date: date) -> float:
+        """Return the value at an exact report date."""
+
+        for index, candidate in enumerate(self.dates):
+            if candidate == report_date:
+                return self.values[index]
+        raise InvalidReportStepError(
+            f"Summary vector {self.name!r} has no date {report_date}"
+        )
+
+    def interpolate_at(
+        self,
+        simulation_day: float,
+        method: SummaryInterpolationMethod | str = SummaryInterpolationMethod.LINEAR,
+    ) -> float:
+        """Interpolate a value by simulation day.
+
+        These are generic numeric interpolation rules for the scoped formatted
         summary slice. Simulator-specific rate/cumulative resampling rules
         remain deferred until independently verified.
         """
 
+        interpolation_method = SummaryInterpolationMethod(method)
         if not self.values:
             raise SummaryDataError(f"Summary vector {self.name!r} contains no values")
 
@@ -94,6 +140,8 @@ class SummaryVector:
             left_day = days[right_index - 1]
             right_day = days[right_index]
             if left_day <= target <= right_day:
+                if interpolation_method is SummaryInterpolationMethod.STEPWISE:
+                    return self.values[right_index - 1]
                 fraction = (target - left_day) / (right_day - left_day)
                 left_value = self.values[right_index - 1]
                 right_value = self.values[right_index]
@@ -102,9 +150,14 @@ class SummaryVector:
             f"Simulation day {target} is outside vector {self.name!r}"
         )
 
-    def resample(self, interval_days: float) -> "SummaryVector":
-        """Return a linearly resampled vector at a fixed day interval."""
+    def resample(
+        self,
+        interval_days: float,
+        method: SummaryInterpolationMethod | str = SummaryInterpolationMethod.LINEAR,
+    ) -> "SummaryVector":
+        """Return a resampled vector at a fixed day interval."""
 
+        interpolation_method = SummaryInterpolationMethod(method)
         interval = float(interval_days)
         if interval <= 0:
             raise ValueError("interval_days must be positive")
@@ -123,7 +176,10 @@ class SummaryVector:
 
         return SummaryVector(
             key=self.key,
-            values=tuple(self.interpolate_at(day) for day in days),
+            values=tuple(
+                self.interpolate_at(day, method=interpolation_method)
+                for day in days
+            ),
             simulation_days=tuple(days),
             report_steps=tuple(range(len(days))),
             dates=self._dates_for_days(days),
@@ -138,6 +194,50 @@ class SummaryVector:
         except ImportError as error:
             raise UnsupportedFormatError("NumPy is not installed") from error
         return np.asarray(self.values, dtype=float)
+
+    def rows(self) -> tuple[dict[str, object], ...]:
+        """Return this vector as time/value rows."""
+
+        return tuple(
+            {
+                "KEY": self.name,
+                "DATE": self.dates[index].isoformat(),
+                "REPORT_STEP": self.report_steps[index],
+                "SIMULATION_DAYS": self.simulation_days[index],
+                "VALUE": value,
+                "UNIT": self.unit,
+            }
+            for index, value in enumerate(self.values)
+        )
+
+    def to_csv(self, path: str | Path) -> None:
+        """Write this vector as time/value CSV rows."""
+
+        fieldnames = [
+            "KEY",
+            "DATE",
+            "REPORT_STEP",
+            "SIMULATION_DAYS",
+            "VALUE",
+            "UNIT",
+        ]
+        with Path(path).open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(stream, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self.rows())
+
+    def statistics(self) -> dict[str, float | int]:
+        """Return basic numeric statistics for this vector."""
+
+        if not self.values:
+            raise SummaryDataError(f"Summary vector {self.name!r} contains no values")
+        return {
+            "COUNT": len(self.values),
+            "MIN": min(self.values),
+            "MAX": max(self.values),
+            "FIRST": self.first_value(),
+            "LAST": self.last_value(),
+        }
 
     def _dates_for_days(self, days: Sequence[float]) -> tuple[date, ...]:
         if not self.dates:

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from reservoir_data.domain.keyword.keyword_dataset import KeywordDataset
-from reservoir_data.exceptions.errors import FileReadError, ParseError
+from reservoir_data.exceptions.errors import FileReadError, ParseError, UnsupportedFormatError
 from reservoir_data.formats.grdecl.parser import GrdeclParser
 
 
@@ -22,7 +22,11 @@ class FormattedKeywordReader:
     parser: GrdeclParser = field(default_factory=GrdeclParser)
     encoding: str = "utf-8"
 
-    def read(self, path: str | Path) -> KeywordDataset:
+    def read(
+        self,
+        path: str | Path,
+        expect_formatted: bool | None = True,
+    ) -> KeywordDataset:
         """Read a formatted keyword text file."""
 
         source_path = Path(path)
@@ -32,11 +36,24 @@ class FormattedKeywordReader:
             raise FileReadError(
                 f"Could not read formatted keyword file {source_path}: {error}"
             ) from error
-        return self.parse_bytes(data, source=str(source_path))
+        return self.parse_bytes(
+            data,
+            source=str(source_path),
+            expect_formatted=expect_formatted,
+        )
 
-    def parse_bytes(self, data: bytes, source: str | None = None) -> KeywordDataset:
+    def parse_bytes(
+        self,
+        data: bytes,
+        source: str | None = None,
+        expect_formatted: bool | None = True,
+    ) -> KeywordDataset:
         """Decode bytes and parse formatted keyword records."""
 
+        if expect_formatted is False:
+            raise UnsupportedFormatError(
+                "FormattedKeywordReader cannot read explicitly unformatted payloads"
+            )
         if b"\x00" in data:
             raise ParseError(
                 "Formatted keyword reader received binary-looking data; "

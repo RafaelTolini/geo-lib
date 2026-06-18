@@ -25,6 +25,7 @@ class JsonIndexCache:
     hits: int = 0
     misses: int = 0
     writes: int = 0
+    checksum_sources: bool = False
     _version: int = field(default=1, init=False)
 
     def __post_init__(self) -> None:
@@ -99,4 +100,10 @@ class JsonIndexCache:
         self,
         sources: Iterable[str | Path],
     ) -> tuple[SourceFingerprint, ...]:
-        return tuple(SourceFingerprint.from_path(source) for source in sources)
+        return tuple(
+            SourceFingerprint.from_path(
+                source,
+                include_checksum=self.checksum_sources,
+            )
+            for source in sources
+        )

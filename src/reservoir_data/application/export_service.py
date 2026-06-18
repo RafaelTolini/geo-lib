@@ -11,7 +11,7 @@ from reservoir_data.domain.grid.reservoir_grid import ReservoirGrid
 from reservoir_data.domain.keyword.keyword_record import KeywordRecord, KeywordValue
 from reservoir_data.domain.property.grid_property import GridProperty, PropertyLayout
 from reservoir_data.domain.property.property_collection import PropertyCollection
-from reservoir_data.exceptions.errors import PropertyShapeError
+from reservoir_data.exceptions.errors import PropertyShapeError, UnsupportedFormatError
 from reservoir_data.formats.grdecl.writer import GrdeclWriter
 from reservoir_data.schemas.export import (
     GridTableExportOptions,
@@ -81,6 +81,15 @@ class ExportService:
         """Write grid cell metadata as CSV rows."""
 
         self._write_csv(path, self.grid_cell_rows(grid, options=options))
+
+    def grid_cell_dataframe(
+        self,
+        grid: ReservoirGrid,
+        options: GridTableExportOptions | None = None,
+    ) -> object:
+        """Return grid cell metadata as a pandas DataFrame when installed."""
+
+        return self._to_pandas(self.grid_cell_rows(grid, options=options))
 
     def property_to_grdecl_text(
         self,
@@ -162,6 +171,15 @@ class ExportService:
 
         self._write_csv(path, self.property_rows(property_, options=options))
 
+    def property_dataframe(
+        self,
+        property_: GridProperty,
+        options: PropertyTableExportOptions | None = None,
+    ) -> object:
+        """Return one property as a pandas DataFrame when installed."""
+
+        return self._to_pandas(self.property_rows(property_, options=options))
+
     def properties_to_grdecl_text(
         self,
         properties: PropertyCollection,
@@ -232,6 +250,22 @@ class ExportService:
                 names=names,
                 options=options,
             ),
+        )
+
+    def properties_to_dataframe(
+        self,
+        properties: PropertyCollection,
+        names: Iterable[str] | None = None,
+        options: PropertyTableExportOptions | None = None,
+    ) -> object:
+        """Return selected properties as a pandas DataFrame when installed."""
+
+        return self._to_pandas(
+            self.properties_to_table_rows(
+                properties,
+                names=names,
+                options=options,
+            )
         )
 
     def _grid_records(
@@ -335,6 +369,13 @@ class ExportService:
             writer = csv.DictWriter(stream, fieldnames=tuple(rows[0]))
             writer.writeheader()
             writer.writerows(rows)
+
+    def _to_pandas(self, rows: tuple[TableRow, ...]) -> object:
+        try:
+            import pandas as pd  # type: ignore[import-not-found]
+        except ImportError as error:
+            raise UnsupportedFormatError("pandas is not installed") from error
+        return pd.DataFrame(list(rows))
 
     def _required_property(
         self,

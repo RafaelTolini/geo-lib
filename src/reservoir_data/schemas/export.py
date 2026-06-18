@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from reservoir_data.domain.keyword.keyword_record import KeywordValue
+from reservoir_data.domain.units import UnitSystem
 
 
 class ExportFormat(StrEnum):
@@ -39,7 +40,7 @@ class PropertyExportOptions:
     inactive_default: KeywordValue = None
     output_format: ExportFormat = ExportFormat.GRDECL
     include_cell_indexes: bool = False
-    output_unit_system: str | None = None
+    output_unit_system: UnitSystem | str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -48,9 +49,11 @@ class PropertyExportOptions:
             PropertyExportLayout(self.target_layout),
         )
         object.__setattr__(self, "output_format", ExportFormat(self.output_format))
-        if self.output_unit_system is not None:
-            unit_system = self.output_unit_system.strip()
-            object.__setattr__(self, "output_unit_system", unit_system or None)
+        object.__setattr__(
+            self,
+            "output_unit_system",
+            UnitSystem.optional(self.output_unit_system),
+        )
 
 
 @dataclass(frozen=True, slots=True)

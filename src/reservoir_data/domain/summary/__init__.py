@@ -6,12 +6,16 @@ from reservoir_data.domain.summary.summary_metadata import (
     SummaryMetadata,
     SummaryVectorMetadata,
 )
-from reservoir_data.domain.summary.summary_vector import SummaryVector
+from reservoir_data.domain.summary.summary_vector import (
+    SummaryInterpolationMethod,
+    SummaryVector,
+)
 
 __all__ = [
     "SummaryDataset",
     "SummaryKey",
     "SummaryMetadata",
+    "SummaryInterpolationMethod",
     "SummaryVector",
     "SummaryVectorMetadata",
 ]

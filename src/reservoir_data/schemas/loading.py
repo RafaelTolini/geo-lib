@@ -61,6 +61,7 @@ class LoadCaseOptions:
     root_path: Path | None = None
     strict_discovery: bool = True
     preferred_format: FormattedFilePreference = FormattedFilePreference.AUTO
+    sniff_payload_format: bool = False
     file_categories: Iterable[FileCategory] | None = None
     lazy_loading: bool = True
     cache_policy: CachePolicy = CachePolicy.DISABLED

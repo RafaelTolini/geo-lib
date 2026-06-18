@@ -1,6 +1,7 @@
 """Public facade exports."""
 
 from reservoir_data.public.case_facade import SimulationCase
+from reservoir_data.public.deck_facade import DeckMetadata
 from reservoir_data.public.grid_facade import (
     ActiveCellMap,
     CellIndex,
@@ -10,6 +11,7 @@ from reservoir_data.public.grid_facade import (
     GridLoadOptions,
     GridTableExportOptions,
     ReservoirGrid,
+    load_grid_from_path,
 )
 from reservoir_data.public.property_facade import (
     GridProperty,
@@ -18,6 +20,7 @@ from reservoir_data.public.property_facade import (
     PropertyExportOptions,
     PropertyLayout,
     PropertyTableExportOptions,
+    load_properties_from_path,
 )
 from reservoir_data.public.restart_facade import (
     RestartDataset,
@@ -25,6 +28,7 @@ from reservoir_data.public.restart_facade import (
     RestartHeader,
     RestartLoadOptions,
     RestartReport,
+    load_restarts_from_paths,
 )
 from reservoir_data.public.rft_facade import (
     RftCellMeasurement,
@@ -33,6 +37,7 @@ from reservoir_data.public.rft_facade import (
 )
 from reservoir_data.public.summary_facade import (
     SummaryDataset,
+    SummaryInterpolationMethod,
     SummaryKey,
     SummaryKeySeparatorPolicy,
     SummaryLoadOptions,
@@ -40,7 +45,9 @@ from reservoir_data.public.summary_facade import (
     SummaryTimeUnitPolicy,
     SummaryVector,
     SummaryVectorMetadata,
+    load_summary_from_paths,
 )
+from reservoir_data.public.units_facade import Phase, UnitSystem
 from reservoir_data.public.well_facade import (
     WellConnection,
     WellDataset,
@@ -48,11 +55,12 @@ from reservoir_data.public.well_facade import (
     WellSnapshot,
     WellTimeline,
 )
-from reservoir_data.schemas.queries import ReportStepQuery
+from reservoir_data.schemas.queries import ReportStepMatchPolicy, ReportStepQuery
 
 __all__ = [
     "ActiveCellMap",
     "CellIndex",
+    "DeckMetadata",
     "GridCell",
     "GridDimensions",
     "GridGeometry",
@@ -64,6 +72,8 @@ __all__ = [
     "PropertyExportOptions",
     "PropertyLayout",
     "PropertyTableExportOptions",
+    "Phase",
+    "ReportStepMatchPolicy",
     "ReportStepQuery",
     "ReservoirGrid",
     "RestartDataset",
@@ -76,6 +86,7 @@ __all__ = [
     "RftRecord",
     "SimulationCase",
     "SummaryDataset",
+    "SummaryInterpolationMethod",
     "SummaryKey",
     "SummaryKeySeparatorPolicy",
     "SummaryLoadOptions",
@@ -83,9 +94,14 @@ __all__ = [
     "SummaryTimeUnitPolicy",
     "SummaryVector",
     "SummaryVectorMetadata",
+    "UnitSystem",
     "WellConnection",
     "WellDataset",
     "WellSegment",
     "WellSnapshot",
     "WellTimeline",
+    "load_summary_from_paths",
+    "load_restarts_from_paths",
+    "load_grid_from_path",
+    "load_properties_from_path",
 ]

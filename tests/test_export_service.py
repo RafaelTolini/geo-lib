@@ -3,6 +3,7 @@ from pathlib import Path
 
 from reservoir_data.application.export_service import ExportService
 from reservoir_data.domain.keyword.keyword_record import KeywordRecord
+from reservoir_data.exceptions.errors import UnsupportedFormatError
 from reservoir_data.formats.grdecl.reader import GrdeclReader
 from reservoir_data.formats.grdecl.writer import GrdeclWriter
 from reservoir_data.formats.grid.grid_reader import GridReader
@@ -164,6 +165,29 @@ def test_export_service_exports_property_table_rows_and_csv(tmp_path: Path) -> N
     assert [row["value"] for row in csv_rows] == ["0.25", "0.0"]
 
 
+def test_export_service_dataframe_boundaries_are_optional(tmp_path: Path) -> None:
+    grid_path = tmp_path / "CASE.EGRID"
+    init_path = tmp_path / "CASE.FINIT"
+    grid_path.write_text(_minimal_grid_text(), encoding="utf-8")
+    init_path.write_text("PORO 0.25 /", encoding="utf-8")
+    grid = GridReader().read(grid_path)
+    properties = InitReader().read(init_path, grid=grid, names=("PORO",))
+
+    service = ExportService()
+    try:
+        grid_frame = service.grid_cell_dataframe(grid)
+        property_frame = service.properties_to_dataframe(
+            properties,
+            names=("PORO",),
+            options=PropertyTableExportOptions(inactive_default=0.0),
+        )
+    except UnsupportedFormatError:
+        pass
+    else:
+        assert list(grid_frame["global_index"]) == [0, 1]
+        assert list(property_frame["value"]) == [0.25, 0.0]
+
+
 def test_public_case_exports_grid_and_selected_properties(tmp_path: Path) -> None:
     grid_path = tmp_path / "CASE.FEGRID"
     init_path = tmp_path / "CASE.FINIT"
@@ -198,3 +222,23 @@ def test_public_case_exports_grid_and_selected_properties(tmp_path: Path) -> Non
         row["value"]
         for row in csv.DictReader(exported_props_csv.open(encoding="utf-8"))
     ] == ["0.3", "0.0"]
+
+
+def test_public_case_dataframe_boundaries_are_optional(tmp_path: Path) -> None:
+    grid_path = tmp_path / "CASE.FEGRID"
+    init_path = tmp_path / "CASE.FINIT"
+    grid_path.write_text(_minimal_grid_text(), encoding="utf-8")
+    init_path.write_text("PORO 0.30 /", encoding="utf-8")
+
+    case = SimulationCase.open(tmp_path / "CASE")
+    try:
+        grid_frame = case.grid_cell_dataframe()
+        property_frame = case.properties_dataframe(
+            names=("PORO",),
+            options=PropertyTableExportOptions(inactive_default=0.0),
+        )
+    except UnsupportedFormatError:
+        pass
+    else:
+        assert list(grid_frame["global_index"]) == [0, 1]
+        assert list(property_frame["property"]) == ["PORO", "PORO"]
